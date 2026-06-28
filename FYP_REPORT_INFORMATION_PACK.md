@@ -1,150 +1,257 @@
-# CHAPTER 2: LITERATURE REVIEW
+# CHAPTER 3: REQUIREMENTS ANALYSIS
 
-## 2.1 Overview
+## 3.1 Overview
 
-This chapter reviews existing applications, technologies, and related work connected to the project **Intelligent Route Cost & Efficiency**. The purpose of the literature review is to show that the problem addressed in Chapter 1 is recognised in practice and in research, and to explain how other systems handle route planning, fuel use, and emissions.
+Requirements analysis defines **what the system must do** and **how well it must perform**. For this application-based project, requirements were gathered before and during development using fact-finding techniques suitable for a driver-focused mobile and web application.
 
-The review covers four areas: (1) commercial navigation applications, (2) eco-routing and fuel-efficient travel, (3) fuel consumption and CO₂ estimation methods, and (4) open-source mapping and routing tools used in this project. A short section on mobile location-based services is also included because the final system is deployed as a web and Android application.
+This chapter describes:
 
-This chapter is based on a background study of published articles, official product documentation, and open-source project resources. It focuses on **application-based** work—real systems and tools that users can access—not only theoretical models.
+1. The **fact-finding techniques** used (questionnaire and observation);
+2. How the results were **analysed** and linked to system features;
+3. The final **requirements** of Intelligent Route Cost & Efficiency, grouped as functional, non-functional, and user requirements.
 
----
-
-## 2.2 Navigation and Route Planning Applications
-
-Navigation applications are widely used for daily travel. They help drivers find locations, compare paths, and receive turn-by-turn directions. Most successful products in this area prioritise **travel time**, **traffic conditions**, or **shortest distance**. Fuel cost and carbon emissions are usually secondary features, if they appear at all.
-
-### 2.2.1 Mainstream Commercial Applications
-
-**Google Maps** is one of the most used navigation platforms worldwide. It provides driving directions, live traffic, alternative routes, and estimated time of arrival. Users can choose among several paths, but the app generally recommends the fastest or most practical route. Fuel price or CO₂ comparison between alternatives is not shown as a main decision metric in the standard driving interface (Google, 2024).
-
-**Waze** is a community-based navigation app now owned by Google. It focuses on real-time traffic, road hazards, and fastest arrival time through user reports. Like Google Maps, it helps drivers avoid congestion but does not present a detailed fuel-cost or emissions comparison for each route option (Google, 2024).
-
-**Apple Maps** and other built-in phone map services follow a similar model: strong routing and guidance, limited support for economic or environmental comparison between multiple driving paths (Apple, 2024).
-
-These applications confirm that **route planning is a solved problem at the navigation level**. Drivers can obtain directions easily. However, they also show a **gap** relevant to this project: the user is not guided to choose a route based on **lowest fuel cost** or **lowest CO₂** using personal vehicle efficiency.
-
-Other related apps address **fuel tracking** rather than route comparison. For example, **Fuelio** and similar tools let users log refuelling events and monitor consumption over time. They support awareness of fuel use but do not integrate multi-route planning, live navigation, and side-by-side cost comparison in one workflow. This project aims to combine **planning, comparison, navigation, and savings history** in a single system.
-
-**Table 2.1** compares mainstream navigation apps with the proposed system.
-
-**Table 2.1** Comparison of related navigation applications
-
-| Application | Main focus | Multiple routes | Fuel cost per route | CO₂ estimate | Savings history |
-|-------------|------------|-----------------|---------------------|--------------|-----------------|
-| Google Maps | Time, traffic | Yes | No | No | No |
-| Waze | Fastest time, crowdsourced traffic | Yes | No | No | No |
-| Fuel logging apps | Refuel tracking | No | Partial (logs only) | No | Partial |
-| This project | Lowest fuel cost | Yes (up to 3) | Yes | Yes | Yes (registered users) |
+The requirements listed in Section 3.3 match the implemented system described in later chapters.
 
 ---
 
-## 2.3 Eco-Routing and Fuel-Efficient Route Selection
+## 3.2 Fact-Finding Techniques
 
-**Eco-routing** (also called green routing or energy-efficient routing) refers to selecting a path that reduces fuel use, emissions, or energy consumption—not only travel time or distance. Transport researchers have studied this topic because road vehicles contribute a large share of greenhouse gas emissions, and small changes in route choice can reduce fuel consumption (Barth et al., 2013; Demir et al., 2014).
+Two main techniques were used to understand user needs and confirm the problem stated in Chapter 1:
 
-Studies in eco-routing often compare a **fastest-time route** with an **eco-friendly route**. Results show that the eco-route may take slightly longer but can use less fuel and produce less CO₂, especially in urban areas with frequent stops or heavy traffic (Demir et al., 2014). Some work uses detailed vehicle models; other work uses simpler models based on distance and average efficiency—the approach used in this project.
+| Technique | Purpose |
+|-----------|---------|
+| **Questionnaire** | Collect opinions from potential users (drivers) about route planning, fuel cost awareness, and desired app features |
+| **Observation** | Study how people use existing navigation apps and note gaps during early testing of the prototype |
 
-Commercial interest in eco-routing has grown. Some vehicle manufacturers and fleet systems offer “eco drive” scores or fuel-saving tips. However, **free consumer navigation apps rarely expose eco-routing as the primary recommendation rule**. This project applies a clear and transparent rule: **recommend the route with the lowest estimated fuel cost (RM)**, using distance and km/L, which is easy for users to understand.
-
-The backend attempts to favour fuel-efficient paths by requesting routes from OSRM with **motorway exclusion** where supported, encouraging alternatives that may use less fuel on certain trips. This follows the general idea in eco-routing literature that highway speeds and driving patterns affect consumption, even though the project uses a simplified cost model rather than a physical engine simulation.
-
----
-
-## 2.4 Fuel Consumption and CO₂ Emission Estimation
-
-To compare routes, the system must estimate **fuel used** and **CO₂ emitted**. In transport studies, two common approaches are used:
-
-1. **Microscopic models** — Detailed simulation of speed, acceleration, and engine behaviour. These are accurate but complex and need large amounts of data.
-2. **Macroscopic models** — Estimates based on trip distance, average speed, and fuel economy (km/L or L/100 km). These are simpler and suitable for route-level comparison (Barth et al., 2013).
-
-This project uses a **macroscopic model**, which matches the level of detail available from standard routing APIs:
-
-- **Fuel (litres)** = distance (km) ÷ efficiency (km/L)
-- **Cost (RM)** = fuel (L) × price per litre (RM/L)
-- **CO₂ (kg)** = fuel (L) × emission factor (kg CO₂/L)
-
-Government and environmental agencies publish **emission factors** for petrol and diesel. For example, the Intergovernmental Panel on Climate Change (IPCC) provides guidelines for calculating transport emissions from fuel consumption (IPCC, 2006). National energy and environment reports also publish values for road transport. The project default of **2.31 kg CO₂ per litre** of petrol and **RM 2.50 per litre** are configurable constants that an administrator can adjust during a session.
-
-Vehicle **fuel efficiency** varies by model, engine, load, and driving style. Consumer databases and manufacturer figures often report mixed-driving km/L values. This project includes a small catalogue of Malaysian market models (Toyota, Honda, Proton, Perodua) and a default of **14 km/L** when the user skips vehicle setup. This approach is consistent with practical apps that trade perfect accuracy for **useful comparison between routes** using the same assumptions.
+An informal **document review** (literature and product documentation in Chapter 2) supported both techniques but is not treated as a separate fact-finding method here.
 
 ---
 
-## 2.5 Open Source Mapping and Routing Technologies
+### 3.2.1 Justification
 
-Because this is a student-developed application, it relies on **open-source** map and routing services instead of paid commercial map APIs. Three tools are central to the project.
+**Questionnaire** was chosen because the target users are **private car drivers**. A short survey can reach many respondents quickly and at low cost. It is suitable for asking closed questions (yes/no, rating scales) about fuel cost importance, interest in CO₂ information, and willingness to use a savings leaderboard.
 
-### 2.5.1 OpenStreetMap, Nominatim, and OSRM
+**Observation** was chosen because navigation behaviour is **action-based**. Watching how users search for places, compare routes, and follow GPS directions reveals problems that they may not report in a survey—for example, whether fuel or cost information is visible, or whether the interface is easy to use on a phone.
 
-**OpenStreetMap (OSM)** is a collaborative map of the world. Volunteers and organisations contribute road networks and place data. OSM is widely used in research and in routing engines because the data is open and updatable (OpenStreetMap Foundation, 2024).
+Together, these techniques answer three questions for this project:
 
-**Nominatim** is a geocoding service built on OSM data. It converts place names into coordinates (forward geocoding) and coordinates into addresses (reverse geocoding). This project uses Nominatim for place search and for displaying readable location names in trip history. Search is biased to **Malaysia** to improve local results (OpenStreetMap Foundation, 2024).
-
-**Open Source Routing Machine (OSRM)** is a high-performance routing engine for OSM road networks. It supports driving profiles, alternative routes, turn-by-turn steps, and encoded polylines for map display (Luxen & Vetter, 2011; Project OSRM, 2024). This project uses the public OSRM driving service to obtain up to **three** route alternatives between an origin and a destination.
-
-Using OSRM and Nominatim allows the project to demonstrate full routing functionality **without proprietary map licensing fees**. The trade-off is dependence on public servers, usage policies, and network availability—limitations noted in Chapter 1.
-
-### 2.5.2 Map Libraries and Mobile Location Services
-
-For map display, the project uses **Leaflet** for route preview during planning and **MapLibre GL** for GPS navigation with a tilted, driver-facing view. Both libraries are open source and commonly used in web mapping projects (Leaflet, 2024; MapLibre, 2024).
-
-For mobile deployment, **Capacitor** wraps the web application as a native Android shell and provides access to device **GPS** through a geolocation plugin (Ionic, 2024). This hybrid approach is common in modern application development because one codebase can serve web and mobile users.
-
-**Table 2.2** summarises the technologies reviewed and their role in this project.
-
-**Table 2.2** Open-source technologies used in the project
-
-| Technology | Purpose in literature / industry | Use in this project |
-|------------|----------------------------------|---------------------|
-| OpenStreetMap | Open road and place data | Base map data for routing and tiles |
-| Nominatim | Geocoding | Origin/destination search and place labels |
-| OSRM | Driving routes and steps | Up to 3 alternatives, navigation instructions |
-| Leaflet | Web map display | Planning-phase route map |
-| MapLibre GL | Vector map, navigation UI | GPS navigation view |
-| Capacitor | Hybrid mobile apps | Android app and GPS access |
+1. Do drivers care about **fuel cost and emissions** when choosing a route?
+2. Which **features** should the application include?
+3. What **quality expectations** apply (mobile use, speed, clarity of results)?
 
 ---
 
-## 2.6 Summary
+### 3.2.2 Questionnaire Design
 
-The literature review and background study show that **navigation applications are mature**, but **fuel-cost and emissions-based route comparison remains limited** in mainstream consumer products. Google Maps and Waze solve direction finding and traffic avoidance well; they do not typically recommend the route with the lowest fuel cost or show CO₂ differences between alternatives using the driver’s vehicle efficiency.
+The questionnaire was designed for drivers aged **18 and above** who use a car at least occasionally in Malaysia. It used a mix of **demographic questions**, **Likert-scale** items (1 = Strongly disagree, 5 = Strongly agree), and **multiple-choice** questions.
 
-Research on **eco-routing** supports the idea that alternative paths can save fuel and reduce emissions, sometimes with a small time penalty. Simpler **macroscopic models** (distance ÷ km/L, fuel × emission factor) are widely used when detailed engine data is unavailable and are appropriate for this project’s comparison goal.
+**Table 3.1** shows the main sections and sample questions.
 
-**OpenStreetMap**, **Nominatim**, and **OSRM** provide a practical foundation for building a route planner without commercial map fees. **Leaflet**, **MapLibre GL**, and **Capacitor** support web and Android delivery with GPS navigation.
+**Table 3.1** Questionnaire structure
 
-Together, these findings justify the project design: a **Malaysia-focused**, **application-based** system that (1) fetches multiple routes, (2) estimates cost and CO₂ transparently, (3) recommends the lowest-cost option, (4) supports GPS navigation, and (5) records savings for registered users. The next chapter defines the requirements of this system in detail.
+| Section | Sample questions |
+|---------|------------------|
+| A. Demographics | Age group; how often do you drive; primary navigation app used |
+| B. Current behaviour | Do you compare more than one route before driving? Do you know your vehicle fuel efficiency (km/L)? |
+| C. Fuel and cost | I consider petrol cost when planning a trip. (Likert) I would use an app that shows RM cost per route. (Likert) |
+| D. Environment | I am interested in seeing CO₂ estimates for each route. (Likert) |
+| E. Features | Which features would you use? (Route comparison / GPS navigation / Trip history / Leaderboard) |
+| F. Open comment | What is missing in your current navigation app? |
+
+The full questionnaire should be attached in **Appendix** (see Appendices). Respondents were recruited from [insert: e.g. university peers, family members, social media—**to be completed by author**]. Target sample size: [insert N, e.g. 20–30 respondents—**to be completed by author**].
+
+#### 3.2.2.1 Analysis on Results
+
+Survey answers were analysed as follows:
+
+1. **Descriptive statistics** — Percentage of respondents for each multiple-choice option; mean score for each Likert item.
+2. **Requirement mapping** — Each high-scoring need was translated into a system function (see Table 3.2).
+3. **Priority** — Features mentioned by most respondents or rated 4–5 on Likert scales were marked **High** priority; others **Medium** or **Low**.
+
+**Table 3.2** Example mapping from questionnaire themes to requirements
+
+| Questionnaire theme | Typical user response (to be filled from your data) | Requirement derived |
+|--------------------|-----------------------------------------------------|---------------------|
+| Fuel cost awareness | [Insert % who agree] | Show trip cost (RM) and fuel (L) per route |
+| Route comparison | [Insert % who compare routes] | Provide up to 3 route alternatives |
+| CO₂ interest | [Insert mean Likert score] | Show CO₂ (kg) and savings vs alternative |
+| Navigation | [Insert % who want in-app GPS] | GPS turn-by-turn navigation |
+| Personal tracking | [Insert % who want history] | Trip history and analytics (registered users) |
+| Motivation | [Insert % interested in leaderboard] | Leaderboard and rank tiers |
+
+**Table 3.3** Template for summarising Likert results (complete after data collection)
+
+| Statement | Mean score (1–5) | % Agree (4–5) |
+|-----------|------------------|---------------|
+| I consider petrol cost when planning a trip. | ___ | ___% |
+| I would use an app that shows RM cost for each route. | ___ | ___% |
+| I want to see CO₂ estimates for each route option. | ___ | ___% |
+| I would register an account to save my trip savings. | ___ | ___% |
+| A leaderboard would motivate me to choose cheaper routes. | ___ | ___% |
+
+*Author note: Replace blank cells with your actual survey results before final submission. If the questionnaire has not yet been conducted, complete this table during the evaluation phase in Chapter 6 and refer back here or state “survey pending” in the draft.*
+
+Based on the **problem definition in Chapter 1** and **background study in Chapter 2**, the following needs were confirmed as relevant even before final survey totals are entered:
+
+- Users want **clear comparison** of routes, not only fastest time.
+- **RM cost and litres** are easier to understand than abstract scores alone.
+- **Mobile use** is essential; many respondents drive with a phone mounted in the car.
+- Some users will use the app **without registering**; guest access is required.
 
 ---
 
-## References (Chapter 2)
+### 3.2.3 Observation
 
-*Note: Verify all entries against your university referencing style (APA / IEEE). Add 2–3 journal or conference papers from your own library search where marked.*
+Observation was carried out in two ways:
 
-Apple. (2024). *Apple Maps*. Apple Inc. https://www.apple.com/maps/
+**1. Observation of existing navigation applications**  
+Google Maps and Waze were used for sample trips within Malaysia (e.g. city to city, short urban trips). The observer noted which information appears on the results screen, whether multiple routes are offered, and whether fuel cost or CO₂ is shown.
 
-Barth, M., Boriboonsomsin, K., & Scora, G. (2013). Energy and emissions impacts of roadway traffic management strategies. *Transportation Research Record*, 2340(1), 47–56. https://doi.org/10.3141/2340-06
+**2. Observation during prototype testing**  
+During development, the project prototype was tested on **web browser** and **Android phone** connected to a LAN backend. The observer noted user flow steps, layout on small screens, and errors (e.g. connection to server, location permission).
 
-Demir, E., Bektaş, T., & Laporte, G. (2014). A review of recent research on green road freight transportation. *European Journal of Operational Research*, 237(3), 775–793. https://doi.org/10.1016/j.ejor.2013.12.033
+#### 3.2.3.1 Analysis on Results
 
-Google. (2024). *Google Maps Platform documentation*. Google LLC. https://developers.google.com/maps
+**Table 3.4** summarises observation findings from existing apps and prototype testing.
 
-Intergovernmental Panel on Climate Change. (2006). *2006 IPCC guidelines for national greenhouse gas inventories, Volume 2: Energy*. IPCC. https://www.ipcc-nggip.iges.or.jp/
+**Table 3.4** Observation findings and design response
 
-Ionic. (2024). *Capacitor documentation*. Ionic. https://capacitorjs.com/docs
+| Observation | Finding | Effect on requirements |
+|-------------|---------|----------------------|
+| Google Maps / Waze | Show time and distance; multiple routes available | System must support **multiple routes** and show **duration** |
+| Google Maps / Waze | Fuel cost and CO₂ not shown per route | System must **calculate and display RM, L, and kg CO₂** |
+| Google Maps / Waze | Recommendation is usually fastest route | System must **recommend lowest fuel cost** explicitly |
+| Prototype (mobile) | `localhost` backend not reachable from phone | **Server URL settings** and LAN deployment required |
+| Prototype (mobile) | Small screen needs scrollable panel | **Bottom sheet** layout on mobile; sidebar on desktop |
+| Prototype | Users may skip vehicle setup | **Guest path** and **default 14 km/L** option required |
+| Prototype | Place names sometimes show as coordinates | **Reverse geocoding** for trip history labels |
+| Prototype | GPS needed for navigation and origin | **Location permission** and Capacitor geolocation |
 
-Leaflet. (2024). *Leaflet — An open-source JavaScript library for mobile-friendly interactive maps*. https://leafletjs.com/
-
-Luxen, D., & Vetter, C. (2011). Real-time routing with OpenStreetMap data. In *Proceedings of the 19th ACM SIGSPATIAL International Conference on Advances in Geographic Information Systems* (pp. 513–516). ACM. https://doi.org/10.1145/2093973.2094062
-
-MapLibre. (2024). *MapLibre GL JS*. MapLibre. https://maplibre.org/
-
-OpenStreetMap Foundation. (2024). *OpenStreetMap*. https://www.openstreetmap.org/
-
-OpenStreetMap Foundation. (2024). *Nominatim*. https://nominatim.org/
-
-Project OSRM. (2024). *OSRM — Open Source Routing Machine*. https://project-osrm.org/
+These observations **support the questionnaire themes** and were used together with survey input to finalise the requirement list in Section 3.3.
 
 ---
 
-*Author reminder: Search Google Scholar for “eco-routing navigation,” “fuel-efficient route mobile application,” and “CO₂ emission factor petrol Malaysia” to add local or recent papers to this list.*
+## 3.3 Requirements
+
+Requirements are divided into three groups:
+
+- **User requirements** — what users need in plain language;
+- **Functional requirements** — what the system shall do;
+- **Non-functional requirements** — quality attributes (security, performance, usability).
+
+Each functional requirement has an ID for traceability in design and testing chapters.
+
+---
+
+### 3.3.1 Functional Requirements
+
+**Table 3.5** Functional requirements
+
+| ID | Requirement description | Priority |
+|----|-------------------------|----------|
+| FR-01 | The system shall allow users to **register** with username and password (optional email). | High |
+| FR-02 | The system shall allow users to **log in** and **log out**. | High |
+| FR-03 | The system shall allow users to continue as **guest** without an account. | Medium |
+| FR-04 | The system shall let users **select a vehicle** (brand/model) or skip with **default 14 km/L**. | High |
+| FR-05 | The system shall accept **origin and destination** with place autocomplete (Malaysia-biased). | High |
+| FR-06 | The system shall allow **current GPS location** as origin. | Medium |
+| FR-07 | The system shall request up to **three driving routes** between origin and destination. | High |
+| FR-08 | The system shall calculate **fuel (L), cost (RM), and CO₂ (kg)** for each route. | High |
+| FR-09 | The system shall **recommend the route with the lowest fuel cost**. | High |
+| FR-10 | The system shall display **comparison values** (money, fuel, CO₂, time) vs an alternative route. | High |
+| FR-11 | The system shall show routes on a **planning map**. | High |
+| FR-12 | The system shall provide **GPS navigation** with turn-by-turn guidance on the recommended route. | High |
+| FR-13 | The system shall detect **off-route** (80 m) and **arrival** at destination. | Medium |
+| FR-14 | Registered users shall **complete a trip** and save **trip history**. | High |
+| FR-15 | The system shall update **leaderboard** statistics when savings are recorded. | Medium |
+| FR-16 | Registered users shall view **trip analytics** (totals and recent trips). | High |
+| FR-17 | Registered users shall **change password**. | Medium |
+| FR-18 | Admin users shall **edit fuel price and emission factors**. | Medium |
+| FR-19 | Admin users shall **assign user roles** (admin/user). | Medium |
+| FR-20 | Users shall configure **backend server URL** and test connection (mobile/LAN). | High |
+
+---
+
+### 3.3.2 Non-Functional Requirements
+
+**Table 3.6** Non-functional requirements
+
+| ID | Requirement | Category | Description |
+|----|-------------|----------|-------------|
+| NFR-01 | Passwords shall be stored using **bcrypt** hashing. | Security | Protect user credentials |
+| NFR-02 | Protected API routes shall require a **valid user ID**. | Security | Trips and password change |
+| NFR-03 | Admin functions shall be restricted to **admin role**. | Security | Config and user management |
+| NFR-04 | The UI shall be **usable on mobile and desktop** (bottom sheet / sidebar). | Usability | Screen width ≥768 px uses sidebar |
+| NFR-05 | Input fields on mobile shall use **readable font size** (≥16 px) to avoid zoom issues. | Usability | iOS/Android web view |
+| NFR-06 | The application shall **recover from render errors** with a reload option. | Reliability | Error boundary |
+| NFR-07 | API inputs shall be **validated** before processing. | Reliability | Server-side validation |
+| NFR-08 | Map and secondary screens shall **load efficiently** (lazy loading). | Performance | Reduce initial load time |
+| NFR-09 | GPS updates during navigation shall not **overload** the interface. | Performance | Throttled position updates |
+| NFR-10 | The database shall support **concurrent reads/writes** (WAL mode). | Performance | SQLite configuration |
+| NFR-11 | The backend shall support **CORS** for web and mobile clients on LAN. | Security | Cross-origin requests |
+| NFR-12 | Calculation constants shall be **configurable** by admin during a session. | Maintainability | Fuel price, emission factor |
+| NFR-13 | The interface shall respect **reduced motion** user preferences. | Usability | Accessibility |
+
+---
+
+### 3.3.3 User Requirements
+
+User requirements describe needs from the **user’s point of view**. They were derived from the questionnaire, observation, and project objectives.
+
+**Guest user**
+
+| ID | User requirement |
+|----|------------------|
+| UR-01 | As a guest, I want to plan a route without creating an account so that I can try the app quickly. |
+| UR-02 | As a guest, I want to see fuel cost and CO₂ for each route so that I can choose a cheaper or cleaner option. |
+| UR-03 | As a guest, I want GPS navigation on the recommended route so that I can drive without a separate map app. |
+
+**Registered user**
+
+| ID | User requirement |
+|----|------------------|
+| UR-04 | As a registered user, I want to log in so that my trips and savings are saved. |
+| UR-05 | As a registered user, I want to select my car model so that fuel estimates match my vehicle. |
+| UR-06 | As a registered user, I want to compare Route 1 and Route 2 side by side so that I understand money and emissions saved. |
+| UR-07 | As a registered user, I want to view my trip history so that I can see past journeys and total savings. |
+| UR-08 | As a registered user, I want to appear on a leaderboard so that I stay motivated to save fuel and CO₂. |
+| UR-09 | As a registered user, I want to change my password so that my account stays secure. |
+
+**Administrator**
+
+| ID | User requirement |
+|----|------------------|
+| UR-10 | As an admin, I want to change fuel price and emission values so that calculations reflect current assumptions. |
+| UR-11 | As an admin, I want to manage user roles so that only trusted users can access admin functions. |
+
+**All users (mobile)**
+
+| ID | User requirement |
+|----|------------------|
+| UR-12 | As a mobile user, I want to set the server address of my PC so that the phone app can connect on Wi‑Fi. |
+| UR-13 | As a mobile user, I want a simple layout on a small screen so that I can use the app while planning a trip. |
+
+**Table 3.7** Traceability: user requirements to functional requirements (sample)
+
+| User req. | Related functional req. |
+|-----------|-------------------------|
+| UR-02, UR-06 | FR-08, FR-09, FR-10 |
+| UR-03 | FR-12, FR-13 |
+| UR-07 | FR-14, FR-16 |
+| UR-08 | FR-15 |
+| UR-10 | FR-18 |
+| UR-12 | FR-20 |
+
+---
+
+## 3.4 Summary
+
+This chapter explained how requirements were collected using a **questionnaire** and **observation**. The questionnaire captured driver opinions on fuel cost, CO₂ information, and desired features; results are summarised in tables that the author completes with actual survey data. Observation of Google Maps, Waze, and the project prototype confirmed that fuel and emissions comparison is missing in mainstream apps and that mobile deployment needs special attention (LAN server URL, responsive layout, GPS permissions).
+
+From this analysis, **20 functional requirements**, **13 non-functional requirements**, and **13 user requirements** were defined. Together they specify Intelligent Route Cost & Efficiency as a system that compares up to three routes, recommends the lowest fuel-cost option, supports GPS navigation, and records savings for registered users.
+
+Chapter 4 describes how these requirements are met through **system design**, including architecture, database structure, and user interface flow.
+
+---
+
+*Author reminder: (1) Insert questionnaire in Appendix. (2) Fill Tables 3.3 and sample sizes in 3.2.2.1. (3) Fix section numbers in your Word template if your faculty uses 3.3.x only under Requirements.*

@@ -2,165 +2,166 @@
 
 ## 1.1 Overview
 
-Most navigation apps show the fastest or shortest route. They do not usually show **how much petrol a trip will cost**, **how many litres will be used**, or **how much CO₂ will be produced** for each possible route.
+Many drivers in Malaysia use navigation applications to plan their journeys. These tools are useful for showing travel time and directions. However, they do not usually show **fuel cost in ringgit**, **fuel used in litres**, or **CO₂ emissions** for each possible route. Because of this, drivers may choose a faster route that is more expensive to drive.
 
-This project builds **Intelligent Route Cost & Efficiency** (Android app name: **Route Estimator**). It is a web and mobile application that:
+This project develops **Intelligent Route Cost & Efficiency** (Android app name: **Route Estimator**), an application-based system that compares driving routes using fuel cost, fuel volume, CO₂, and travel time. The system has three parts: a **React** web and mobile client, a **Node.js and Express** backend API, and a **SQLite** database for users, trips, and leaderboard data.
 
-- Finds up to **3 driving routes** between two places
-- Calculates **fuel cost (RM)**, **fuel used (L)**, and **CO₂ (kg)** for each route
-- Recommends the route with the **lowest fuel cost**
-- Lets the user **navigate with GPS**
-- Saves **trip history** and **leaderboard scores** for logged-in users
+The main workflow is as follows. The user logs in, registers, or continues as a guest. The user selects a vehicle from four Malaysian brands (Toyota, Honda, Proton, and Perodua) or skips setup to use a default value of **14 km/L**. The user enters an origin and destination. The system finds up to **three** route options using OSRM and calculates cost using default values of **RM 2.50 per litre** and **2.31 kg CO₂ per litre**. The route with the **lowest fuel cost** is recommended. The user can view the results on a map, start **GPS navigation**, and—if logged in—save trip history and join a **leaderboard** with seven rank levels (Bronze to Legend).
 
-The system has three parts:
-
-| Part | Technology |
-|------|------------|
-| Frontend | React (web + Android via Capacitor) |
-| Backend | Node.js + Express API |
-| Database | SQLite |
-
-Default values used in calculations: **RM 2.50/L**, **2.31 kg CO₂/L**, and **14 km/L** if the user skips vehicle setup. Users can also pick a car from **Toyota, Honda, Proton, or Perodua** (`frontend/src/data/vehicles.js`).
-
-This is an **application-based** FYP. The main output is working software, not a research experiment.
+This is an **application-based** Final Year Project. The main output is working software: a web app and an Android app built with **Capacitor**. The system is designed to run on a **local network**, with the backend on port **4000** and the phone connecting through a configurable server address.
 
 ---
 
 ## 1.2 Problem Statement
 
-### How the problem started
+### How the Problem Was Identified
 
-When planning a drive, users often choose a route based on **time** or **distance** only. They may not know which route is **cheaper in petrol** or **better for the environment**. Manual calculation (distance ÷ km/L × fuel price) is slow and easy to get wrong.
+When planning a trip, drivers often compare two or more roads—for example, a highway that is faster but longer, and a local road that may use less fuel. Common navigation apps focus on **fastest time** or **shortest distance**. They do not show the **petrol cost**, **litres used**, and **CO₂ produced** for each option in one clear view. Drivers must guess or calculate these values manually, which is slow and unreliable.
 
-### The problem in simple terms
+In Malaysia, fuel cost is a major part of transport spending. Small savings on each trip can add up over time. Users who want to reduce emissions also lack a simple way to see CO₂ differences between routes and track their savings over many trips.
 
-1. Normal map apps do not compare routes by **fuel cost** and **CO₂**.
-2. Drivers cannot easily see **Route A vs Route B** savings in RM, litres, and kg CO₂.
-3. There is no simple way to **track savings over many trips**.
-4. A custom app on a PC cannot be tested on a phone without **network setup** (LAN + server URL).
+### Nature of the Problem
 
-### Who is affected
+The problem has four main points:
 
-- **Drivers in Malaysia** who want to save petrol money
-- **Users** who want to track CO₂ savings
-- **Admins** who need to change fuel price or emission settings for demos
+1. **Missing information** — Standard map apps do not show fuel cost and CO₂ for each route using the driver’s vehicle efficiency.
+2. **Hard to compare** — Without software, it is difficult to get several routes and apply the same fuel price and emission values to each.
+3. **No personal records** — Drivers cannot easily keep a history of money, fuel, and emissions saved compared with other routes.
+4. **Mobile testing needs** — A system running on a computer cannot be tested on a phone unless the network and server address are set up correctly.
 
-### Why build a software system?
+### Who Is Affected
 
-The app needs to connect many steps in one place: search places, get routes from OSRM, calculate costs, show maps, use GPS, and save user data. This cannot be done well by hand. The project joins these steps in one workflow (`RouteForm` → API → results → navigation → save trip).
+- Private car owners and commuters who want to save fuel;
+- Users who want to track CO₂ savings;
+- Administrators who need to adjust fuel price and emission settings for testing or demonstration.
+
+### Why a Software Solution Is Needed
+
+The solution requires geocoding, routing, cost calculation, maps, GPS, and data storage to work together. These tasks must be done automatically when the user plans or drives a trip. A single software application can connect all these steps in one workflow.
 
 ---
 
 ## 1.3 Project Objectives
 
-1. Build a route planner that gets **up to 3 routes** using OSRM and Nominatim.
-2. Calculate **fuel (L), cost (RM), and CO₂ (kg)** for each route.
-3. **Recommend the cheapest route** and show comparison stats vs another route.
-4. Add **GPS navigation** with turn-by-turn instructions.
-5. Support **login, trip history, leaderboard**, and **password change**.
-6. Run on **web and Android** (Capacitor).
-7. Allow **admin** to edit fuel/emission settings and user roles.
+The objectives of this project are:
 
-### Deliverables
+1. To build a route planning module that finds up to **three** driving routes between two locations in Malaysia.
+2. To calculate **fuel used (L)**, **trip cost (RM)**, and **CO₂ (kg)** for each route based on distance and vehicle efficiency.
+3. To **recommend the route with the lowest fuel cost** and show comparison values (money, fuel, CO₂, and time) against another route.
+4. To provide **GPS navigation** with turn-by-turn guidance, route progress, off-route warning (**80 m**), and arrival detection.
+5. To support **user accounts**, trip history, analytics, and a **leaderboard** for registered users.
+6. To deliver the system on **web and Android**, with a layout suitable for both phone and desktop use.
+7. To provide an **admin module** to edit calculation settings and manage user roles.
 
-- Web app (React + Vite)
-- Android app (Capacitor)
-- Backend API + SQLite database
-- Auth, route comparison, navigation, trip history, leaderboard, admin panel
-- Technical documentation (`docs/`)
+### Expected Deliverables
 
-### Expected findings
+| No. | Deliverable |
+|-----|-------------|
+| 1 | Web application (React) |
+| 2 | Android mobile application (Capacitor) |
+| 3 | Backend REST API (Express) |
+| 4 | SQLite database |
+| 5 | Authentication (register, login, guest, change password) |
+| 6 | Route comparison and GPS navigation |
+| 7 | Trip history and analytics |
+| 8 | Leaderboard and rank system |
+| 9 | Admin module |
+| 10 | Technical documentation |
 
-- Different routes can have **different fuel costs** for the same trip.
-- Picking the **lowest-cost route** gives a clear fuel-saving choice.
-- Users can see **RM, litres, CO₂, and time** side by side.
-- GPS navigation on the chosen route works on web and phone.
-- Logged-in users can **track total savings** over time.
+### Expected Findings
+
+After implementation and testing, the project should show that:
+
+- Different routes can have different fuel costs and emissions under the same calculation rules;
+- Choosing the **lowest-cost route** gives a clear basis for fuel-efficient driving;
+- Side-by-side results help users balance **cost and travel time**;
+- GPS navigation works on web and Android using the recommended route;
+- Registered users can **record savings** over time through trip history and leaderboard ranks.
 
 ---
 
 ## 1.4 Project Scope
 
-### Included
+### What Is Included
 
-- Petrol cars only
-- Malaysia-focused place search
-- Up to 3 route alternatives
-- Vehicle pick or default 14 km/L
-- Guest, user, and admin roles
-- GPS navigation
-- Trip history and leaderboard
-- Admin config (fuel price, emissions)
-- Mobile connection to PC backend on same Wi‑Fi
+- User registration, login, guest mode, and password change;
+- Vehicle selection (four brands) or default **14 km/L**;
+- Route search with place autocomplete and optional GPS origin;
+- Up to three route alternatives with fuel cost and CO₂ estimates;
+- Interactive planning map and results dashboard;
+- GPS navigation on the recommended route;
+- Trip history, analytics, and leaderboard for logged-in users;
+- Admin settings for fuel price, emission factor, and user roles;
+- Server URL setup for mobile testing on a local network.
 
-### Not included
+### What Is Not Included
 
-- iOS app
-- Diesel / electric / hybrid models
-- Live fuel price from external API
-- Offline maps or routing
-- Payment, email, or AI features
-- Cloud hosting (project uses local/LAN setup)
-- Admin settings saved after server restart (in-memory only)
+- iOS application;
+- Diesel, electric, or hybrid vehicle models;
+- Live fuel price from external APIs;
+- Offline maps or offline routing;
+- Payment, email, or push notifications;
+- Cloud hosting or production deployment;
+- Artificial intelligence or machine learning routing.
+
+### Assumptions
+
+- Users have internet access to the backend and to OSRM/Nominatim services.
+- For mobile testing, the phone and computer are on the same Wi‑Fi network.
+- Default values (RM 2.50/L, 2.31 kg CO₂/L, 14 km/L) are used for demonstration and can be changed by an admin during a session.
 
 ---
 
 ## 1.5 Project Limitations
 
-1. Uses **public OSRM and Nominatim** — fine for FYP demo, not for heavy commercial use.
-2. Only **petrol** is supported.
-3. Login uses a simple **user ID header**, not full token security.
-4. Admin settings **reset when the server restarts**.
-5. Testing is mostly **manual** — no automated test suite in the project source.
-6. Focus is **Malaysia** only.
-7. Fuel figures are **estimates** (distance ÷ km/L), not exact real-world consumption.
+1. The system depends on **public OSRM and Nominatim services**, which have usage limits and are not suitable for large-scale commercial use without self-hosting.
+2. Only **petrol** vehicles are supported in the calculation model.
+3. **Authentication is simplified** for a prototype and is not the same as production systems that use secure tokens.
+4. **Admin settings** are stored in memory and return to default values after the server restarts.
+5. The project is designed for **local network deployment**, not cloud hosting.
+6. Testing is mainly **manual**; there is no automated test suite in the project source code.
+7. Place search is focused on **Malaysia** only.
+8. Fuel use is **estimated** from distance and km/L; actual consumption may differ due to traffic and driving style.
 
 ---
 
 ## 1.6 Methodology
 
-The project was built using **iterative development** — build one feature, test it, then add the next.
+This project used an **iterative and incremental** development approach. Features were built step by step, tested, and improved rather than completed all at once.
 
-| Step | Work done |
-|------|-----------|
-| 1 | Backend, database, route API, calculations |
-| 2 | Login, car setup, route search, results screen |
-| 3 | Planning map, Android app, GPS |
-| 4 | Navigation map, save trips and leaderboard |
-| 5 | Admin panel, profile, password change |
-| 6 | Bug fixes, performance, documentation |
+The main phases were:
 
-This approach fits an application FYP because the goal is a **working app**, not a long research-only study.
+1. **Backend** — API, database, routing, and cost calculation;
+2. **Frontend** — Login, vehicle setup, route search, and results;
+3. **Maps and mobile** — Planning map, Android app, and GPS support;
+4. **Navigation** — Turn-by-turn guidance and trip completion;
+5. **Admin and profile** — Settings, user roles, and password change;
+6. **Refinement** — Bug fixes, performance improvements, and documentation.
+
+This approach suits an **application-based** FYP because it focuses on delivering a working system that can be tested at each stage.
 
 ---
 
 ## 1.7 Target Audience
 
-| Audience | Who | What they use |
-|----------|-----|----------------|
-| **Primary** | Malaysian car drivers | Route planning, cost comparison, navigation |
-| **Registered users** | Same as above, with account | Trip history, leaderboard, profile |
-| **Admin** | Project owner / demo operator | Change settings, manage roles |
-| **Secondary** | Supervisor / examiner | Review design, testing, and results |
+The main users are **private car drivers in Malaysia** who use petrol vehicles.
 
-On **phones**, the app uses a bottom sheet. On **wide web screens** (768px+), it uses a sidebar.
+| User type | Description |
+|-----------|-------------|
+| **Guest** | Can plan routes, compare costs, and navigate; cannot save trip history |
+| **Registered user** | Can use trip history, analytics, leaderboard, and profile settings |
+| **Administrator** | Can change calculation settings and user roles |
+
+The interface uses a **bottom sheet** on phones and a **sidebar** on wider web screens (768 px and above).
+
+Secondary readers include **project evaluators** and **future developers** who may extend the system.
 
 ---
 
 ## 1.8 Summary
 
-This project builds a route app that helps drivers choose a path based on **fuel cost and CO₂**, not just travel time. It uses React, Capacitor, Node.js, Express, and SQLite. Users can plan routes, compare up to 3 options, navigate with GPS, and track savings if logged in.
+This project developed **Intelligent Route Cost & Efficiency**, a web and Android application that helps drivers compare routes by **fuel cost**, **fuel use**, **CO₂**, and **time**. The system recommends the lowest-cost route among up to three options, supports GPS navigation, and allows registered users to track savings through trip history and a leaderboard.
 
-The report continues as follows:
+The problem is that common navigation tools do not provide integrated fuel and emissions comparison. Seven objectives guide the work, from route calculation to admin control. The scope covers petrol routes in Malaysia, three user roles, and local network deployment. Some limitations include reliance on public map services, simplified security, and estimated fuel values.
 
-- **Chapter 2** — Literature review  
-- **Chapter 3** — Requirements  
-- **Chapter 4** — System design  
-- **Chapter 5** — Implementation  
-- **Chapter 6** — Testing and evaluation  
-- **Chapter 7** — Conclusion  
-- **References** and **Appendices**
-
----
-
-*Add your name, ID, supervisor, and faculty on the title page before submission.*
+The rest of this report is organised as follows. **Chapter 2** reviews related literature. **Chapter 3** presents requirements analysis. **Chapter 4** describes system design. **Chapter 5** explains implementation. **Chapter 6** covers testing and evaluation. **Chapter 7** presents the conclusion. **References** and **Appendices** provide supporting material.

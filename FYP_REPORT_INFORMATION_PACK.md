@@ -20,7 +20,7 @@ Two main techniques were used to understand user needs and confirm the problem s
 
 | Technique | Purpose |
 |-----------|---------|
-| **Questionnaire** | Collect opinions from potential users (drivers) about route planning, fuel cost awareness, and desired app features |
+| **Questionnaire** | Collect opinions from **qualified drivers** (after screening) about route planning, fuel cost awareness, and desired app features |
 | **Observation** | Study how people use existing navigation apps and note gaps during early testing of the prototype |
 
 An informal **document review** (literature and product documentation in Chapter 2) supported both techniques but is not treated as a separate fact-finding method here.
@@ -29,7 +29,7 @@ An informal **document review** (literature and product documentation in Chapter
 
 ### 3.2.1 Justification
 
-**Questionnaire** was chosen because the target users are **private car drivers**. A short survey can reach many respondents quickly and at low cost. It is suitable for asking closed questions (yes/no, rating scales) about fuel cost importance, interest in CO₂ information, and willingness to use a savings leaderboard.
+**Questionnaire** was chosen because the target users are **active private-car drivers who plan their own trips**. A short survey can reach many respondents quickly and at low cost. It is suitable for closed questions about fuel cost importance, interest in CO₂ information, and willingness to use a savings leaderboard. **Purposive sampling with screening questions** ensures that only qualified respondents—those who drive regularly, use navigation apps, and pay for fuel—provide opinions, rather than any car owner who may rarely drive or never choose routes.
 
 **Observation** was chosen because navigation behaviour is **action-based**. Watching how users search for places, compare routes, and follow GPS directions reveals problems that they may not report in a survey—for example, whether fuel or cost information is visible, or whether the interface is easy to use on a phone.
 
@@ -43,32 +43,70 @@ Together, these techniques answer three questions for this project:
 
 ### 3.2.2 Questionnaire Design
 
-The questionnaire was designed for drivers aged **18 and above** who use a car at least occasionally in Malaysia. It used a mix of **demographic questions**, **Likert-scale** items (1 = Strongly disagree, 5 = Strongly agree), and **multiple-choice** questions.
+#### Respondent selection and screening
 
-**Table 3.1** shows the main sections and sample questions.
+The questionnaire did **not** target everyone who owns a car. Car ownership alone does not mean a person plans routes, pays for fuel, or uses navigation apps regularly. To obtain opinions from respondents who can **meaningfully judge** a route-planning and fuel-comparison application, **purposive sampling** was used: only people who meet defined eligibility criteria were invited to complete the survey.
 
-**Table 3.1** Questionnaire structure
+**Table 3.1** lists the eligibility criteria and the reason each criterion improves the quality of the responses.
+
+**Table 3.1** Questionnaire respondent eligibility criteria
+
+| Criterion | Requirement | Justification |
+|-----------|-------------|---------------|
+| E1 | Holds a **valid driving licence** | Respondents must legally drive and understand real on-road journey planning. |
+| E2 | Drives a **private petrol car** at least **3 times per week** (or ≥150 km per week) | Regular drivers face repeated fuel and route decisions; occasional drivers may not reflect typical use of a navigation tool. |
+| E3 | **Plans own driving routes** (not only a passenger) | The app supports the person who chooses origin, destination, and route; passengers cannot evaluate route-comparison features fairly. |
+| E4 | Uses a **navigation app** (e.g. Google Maps, Waze) at least **once per week** for driving trips | Target users already rely on digital routing; they can compare the proposed system with current tools they know. |
+| E5 | **Pays for own petrol** at least part of the time (not fully fleet-funded with no personal fuel cost) | Fuel cost in RM is meaningful only to respondents who experience petrol spending directly. |
+| E6 | Makes **regular trips within Malaysia** | The system uses Malaysia-biased geocoding and local vehicle data; overseas-only drivers are outside project scope. |
+| E7 | Uses a **smartphone** for navigation or pre-trip planning | The product is a web and Android app; respondents must be able to judge mobile usability. |
+| E8 | Age **21 and above**, with at least **1 year** of driving experience | Ensures basic driving maturity beyond newly licensed users who may not yet have stable route habits. |
+
+Respondents who **failed any screening question** were excluded from the main survey. This filtering improves validity: answers reflect people who **actually experience** the problem described in Chapter 1—choosing between routes without clear fuel and CO₂ comparison—rather than theoretical opinions from non-drivers or rare car users.
+
+**Table 3.2** Screening questions (administered before the main questionnaire)
+
+| ID | Screening question | Accept if… |
+|----|-------------------|------------|
+| S1 | Do you hold a current valid driving licence? | Yes |
+| S2 | How often do you drive a private petrol car? | At least 3 days per week **or** ≥150 km per week |
+| S3 | Do you usually plan the route yourself when you drive? | Yes, always or usually |
+| S4 | How often do you use Google Maps, Waze, or similar for driving? | At least once per week |
+| S5 | Do you pay for your own petrol (fully or partly)? | Yes |
+| S6 | Are most of your regular drives within Malaysia? | Yes |
+| S7 | Do you use a smartphone for navigation or trip planning? | Yes |
+| S8 | How long have you been driving regularly? | 1 year or more |
+
+The main questionnaire was shown **only** to respondents who passed all screening items. This is stricter than “car owner” sampling and aligns the survey population with the **intended users** of Intelligent Route Cost & Efficiency: active, self-planning drivers who already use navigation apps and care about practical trip decisions.
+
+#### Questionnaire structure
+
+The main questionnaire used **demographic questions**, **Likert-scale** items (1 = Strongly disagree, 5 = Strongly agree), and **multiple-choice** questions.
+
+**Table 3.3** shows the main sections and sample questions.
+
+**Table 3.3** Questionnaire structure (main survey, after screening)
 
 | Section | Sample questions |
 |---------|------------------|
-| A. Demographics | Age group; how often do you drive; primary navigation app used |
-| B. Current behaviour | Do you compare more than one route before driving? Do you know your vehicle fuel efficiency (km/L)? |
+| A. Profile | Age group; vehicle type (petrol); approximate km/L if known; primary navigation app |
+| B. Current behaviour | Do you compare more than one route before driving? How often does fuel cost influence your route choice? |
 | C. Fuel and cost | I consider petrol cost when planning a trip. (Likert) I would use an app that shows RM cost per route. (Likert) |
 | D. Environment | I am interested in seeing CO₂ estimates for each route. (Likert) |
 | E. Features | Which features would you use? (Route comparison / GPS navigation / Trip history / Leaderboard) |
 | F. Open comment | What is missing in your current navigation app? |
 
-The full questionnaire should be attached in **Appendix** (see Appendices). Respondents were recruited from [insert: e.g. university peers, family members, social media—**to be completed by author**]. Target sample size: [insert N, e.g. 20–30 respondents—**to be completed by author**].
+The full questionnaire (screening + main sections) should be attached in **Appendix**. Respondents were recruited from [insert: e.g. university commuters who drive, local driving communities, social media groups for Malaysian drivers—**to be completed by author**]. Report both: (a) number of people invited, and (b) number who **passed screening** and completed the main survey. Target qualified sample size: [insert N, e.g. 20–30—**to be completed by author**].
 
 #### 3.2.2.1 Analysis on Results
 
 Survey answers were analysed as follows:
 
 1. **Descriptive statistics** — Percentage of respondents for each multiple-choice option; mean score for each Likert item.
-2. **Requirement mapping** — Each high-scoring need was translated into a system function (see Table 3.2).
+2. **Requirement mapping** — Each high-scoring need was translated into a system function (see Table 3.4).
 3. **Priority** — Features mentioned by most respondents or rated 4–5 on Likert scales were marked **High** priority; others **Medium** or **Low**.
 
-**Table 3.2** Example mapping from questionnaire themes to requirements
+**Table 3.4** Example mapping from questionnaire themes to requirements
 
 | Questionnaire theme | Typical user response (to be filled from your data) | Requirement derived |
 |--------------------|-----------------------------------------------------|---------------------|
@@ -79,7 +117,7 @@ Survey answers were analysed as follows:
 | Personal tracking | [Insert % who want history] | Trip history and analytics (registered users) |
 | Motivation | [Insert % interested in leaderboard] | Leaderboard and rank tiers |
 
-**Table 3.3** Template for summarising Likert results (complete after data collection)
+**Table 3.5** Template for summarising Likert results (complete after data collection; **qualified respondents only**)
 
 | Statement | Mean score (1–5) | % Agree (4–5) |
 |-----------|------------------|---------------|
@@ -112,9 +150,9 @@ During development, the project prototype was tested on **web browser** and **An
 
 #### 3.2.3.1 Analysis on Results
 
-**Table 3.4** summarises observation findings from existing apps and prototype testing.
+**Table 3.6** summarises observation findings from existing apps and prototype testing.
 
-**Table 3.4** Observation findings and design response
+**Table 3.6** Observation findings and design response
 
 | Observation | Finding | Effect on requirements |
 |-------------|---------|----------------------|
@@ -145,7 +183,7 @@ Each functional requirement has an ID for traceability in design and testing cha
 
 ### 3.3.1 Functional Requirements
 
-**Table 3.5** Functional requirements
+**Table 3.7** Functional requirements
 
 | ID | Requirement description | Priority |
 |----|-------------------------|----------|
@@ -174,7 +212,7 @@ Each functional requirement has an ID for traceability in design and testing cha
 
 ### 3.3.2 Non-Functional Requirements
 
-**Table 3.6** Non-functional requirements
+**Table 3.8** Non-functional requirements
 
 | ID | Requirement | Category | Description |
 |----|-------------|----------|-------------|
@@ -231,7 +269,7 @@ User requirements describe needs from the **user’s point of view**. They were 
 | UR-12 | As a mobile user, I want to set the server address of my PC so that the phone app can connect on Wi‑Fi. |
 | UR-13 | As a mobile user, I want a simple layout on a small screen so that I can use the app while planning a trip. |
 
-**Table 3.7** Traceability: user requirements to functional requirements (sample)
+**Table 3.9** Traceability: user requirements to functional requirements (sample)
 
 | User req. | Related functional req. |
 |-----------|-------------------------|
@@ -246,7 +284,7 @@ User requirements describe needs from the **user’s point of view**. They were 
 
 ## 3.4 Summary
 
-This chapter explained how requirements were collected using a **questionnaire** and **observation**. The questionnaire captured driver opinions on fuel cost, CO₂ information, and desired features; results are summarised in tables that the author completes with actual survey data. Observation of Google Maps, Waze, and the project prototype confirmed that fuel and emissions comparison is missing in mainstream apps and that mobile deployment needs special attention (LAN server URL, responsive layout, GPS permissions).
+This chapter explained how requirements were collected using a **questionnaire** (with **eligibility screening**) and **observation**. Screening ensured that only **qualified drivers**—those who plan routes regularly, use navigation apps, pay for petrol, and drive in Malaysia—contributed opinions on fuel-comparison features. The questionnaire captured views on fuel cost, CO₂ information, and desired features; results are summarised in tables that the author completes with actual survey data. Observation of Google Maps, Waze, and the project prototype confirmed that fuel and emissions comparison is missing in mainstream apps and that mobile deployment needs special attention (LAN server URL, responsive layout, GPS permissions).
 
 From this analysis, **20 functional requirements**, **13 non-functional requirements**, and **13 user requirements** were defined. Together they specify Intelligent Route Cost & Efficiency as a system that compares up to three routes, recommends the lowest fuel-cost option, supports GPS navigation, and records savings for registered users.
 

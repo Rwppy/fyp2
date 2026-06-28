@@ -1,167 +1,150 @@
-# CHAPTER 1: INTRODUCTION
+# CHAPTER 2: LITERATURE REVIEW
 
-## 1.1 Overview
+## 2.1 Overview
 
-Many drivers in Malaysia use navigation applications to plan their journeys. These tools are useful for showing travel time and directions. However, they do not usually show **fuel cost in ringgit**, **fuel used in litres**, or **CO₂ emissions** for each possible route. Because of this, drivers may choose a faster route that is more expensive to drive.
+This chapter reviews existing applications, technologies, and related work connected to the project **Intelligent Route Cost & Efficiency**. The purpose of the literature review is to show that the problem addressed in Chapter 1 is recognised in practice and in research, and to explain how other systems handle route planning, fuel use, and emissions.
 
-This project develops **Intelligent Route Cost & Efficiency** (Android app name: **Route Estimator**), an application-based system that compares driving routes using fuel cost, fuel volume, CO₂, and travel time. The system has three parts: a **React** web and mobile client, a **Node.js and Express** backend API, and a **SQLite** database for users, trips, and leaderboard data.
+The review covers four areas: (1) commercial navigation applications, (2) eco-routing and fuel-efficient travel, (3) fuel consumption and CO₂ estimation methods, and (4) open-source mapping and routing tools used in this project. A short section on mobile location-based services is also included because the final system is deployed as a web and Android application.
 
-The main workflow is as follows. The user logs in, registers, or continues as a guest. The user selects a vehicle from four Malaysian brands (Toyota, Honda, Proton, and Perodua) or skips setup to use a default value of **14 km/L**. The user enters an origin and destination. The system finds up to **three** route options using OSRM and calculates cost using default values of **RM 2.50 per litre** and **2.31 kg CO₂ per litre**. The route with the **lowest fuel cost** is recommended. The user can view the results on a map, start **GPS navigation**, and—if logged in—save trip history and join a **leaderboard** with seven rank levels (Bronze to Legend).
-
-This is an **application-based** Final Year Project. The main output is working software: a web app and an Android app built with **Capacitor**. The system is designed to run on a **local network**, with the backend on port **4000** and the phone connecting through a configurable server address.
+This chapter is based on a background study of published articles, official product documentation, and open-source project resources. It focuses on **application-based** work—real systems and tools that users can access—not only theoretical models.
 
 ---
 
-## 1.2 Problem Statement
+## 2.2 Navigation and Route Planning Applications
 
-### How the Problem Was Identified
+Navigation applications are widely used for daily travel. They help drivers find locations, compare paths, and receive turn-by-turn directions. Most successful products in this area prioritise **travel time**, **traffic conditions**, or **shortest distance**. Fuel cost and carbon emissions are usually secondary features, if they appear at all.
 
-When planning a trip, drivers often compare two or more roads—for example, a highway that is faster but longer, and a local road that may use less fuel. Common navigation apps focus on **fastest time** or **shortest distance**. They do not show the **petrol cost**, **litres used**, and **CO₂ produced** for each option in one clear view. Drivers must guess or calculate these values manually, which is slow and unreliable.
+### 2.2.1 Mainstream Commercial Applications
 
-In Malaysia, fuel cost is a major part of transport spending. Small savings on each trip can add up over time. Users who want to reduce emissions also lack a simple way to see CO₂ differences between routes and track their savings over many trips.
+**Google Maps** is one of the most used navigation platforms worldwide. It provides driving directions, live traffic, alternative routes, and estimated time of arrival. Users can choose among several paths, but the app generally recommends the fastest or most practical route. Fuel price or CO₂ comparison between alternatives is not shown as a main decision metric in the standard driving interface (Google, 2024).
 
-### Nature of the Problem
+**Waze** is a community-based navigation app now owned by Google. It focuses on real-time traffic, road hazards, and fastest arrival time through user reports. Like Google Maps, it helps drivers avoid congestion but does not present a detailed fuel-cost or emissions comparison for each route option (Google, 2024).
 
-The problem has four main points:
+**Apple Maps** and other built-in phone map services follow a similar model: strong routing and guidance, limited support for economic or environmental comparison between multiple driving paths (Apple, 2024).
 
-1. **Missing information** — Standard map apps do not show fuel cost and CO₂ for each route using the driver’s vehicle efficiency.
-2. **Hard to compare** — Without software, it is difficult to get several routes and apply the same fuel price and emission values to each.
-3. **No personal records** — Drivers cannot easily keep a history of money, fuel, and emissions saved compared with other routes.
-4. **Mobile testing needs** — A system running on a computer cannot be tested on a phone unless the network and server address are set up correctly.
+These applications confirm that **route planning is a solved problem at the navigation level**. Drivers can obtain directions easily. However, they also show a **gap** relevant to this project: the user is not guided to choose a route based on **lowest fuel cost** or **lowest CO₂** using personal vehicle efficiency.
 
-### Who Is Affected
+Other related apps address **fuel tracking** rather than route comparison. For example, **Fuelio** and similar tools let users log refuelling events and monitor consumption over time. They support awareness of fuel use but do not integrate multi-route planning, live navigation, and side-by-side cost comparison in one workflow. This project aims to combine **planning, comparison, navigation, and savings history** in a single system.
 
-- Private car owners and commuters who want to save fuel;
-- Users who want to track CO₂ savings;
-- Administrators who need to adjust fuel price and emission settings for testing or demonstration.
+**Table 2.1** compares mainstream navigation apps with the proposed system.
 
-### Why a Software Solution Is Needed
+**Table 2.1** Comparison of related navigation applications
 
-The solution requires geocoding, routing, cost calculation, maps, GPS, and data storage to work together. These tasks must be done automatically when the user plans or drives a trip. A single software application can connect all these steps in one workflow.
-
----
-
-## 1.3 Project Objectives
-
-The objectives of this project are:
-
-1. To build a route planning module that finds up to **three** driving routes between two locations in Malaysia.
-2. To calculate **fuel used (L)**, **trip cost (RM)**, and **CO₂ (kg)** for each route based on distance and vehicle efficiency.
-3. To **recommend the route with the lowest fuel cost** and show comparison values (money, fuel, CO₂, and time) against another route.
-4. To provide **GPS navigation** with turn-by-turn guidance, route progress, off-route warning (**80 m**), and arrival detection.
-5. To support **user accounts**, trip history, analytics, and a **leaderboard** for registered users.
-6. To deliver the system on **web and Android**, with a layout suitable for both phone and desktop use.
-7. To provide an **admin module** to edit calculation settings and manage user roles.
-
-### Expected Deliverables
-
-| No. | Deliverable |
-|-----|-------------|
-| 1 | Web application (React) |
-| 2 | Android mobile application (Capacitor) |
-| 3 | Backend REST API (Express) |
-| 4 | SQLite database |
-| 5 | Authentication (register, login, guest, change password) |
-| 6 | Route comparison and GPS navigation |
-| 7 | Trip history and analytics |
-| 8 | Leaderboard and rank system |
-| 9 | Admin module |
-| 10 | Technical documentation |
-
-### Expected Findings
-
-After implementation and testing, the project should show that:
-
-- Different routes can have different fuel costs and emissions under the same calculation rules;
-- Choosing the **lowest-cost route** gives a clear basis for fuel-efficient driving;
-- Side-by-side results help users balance **cost and travel time**;
-- GPS navigation works on web and Android using the recommended route;
-- Registered users can **record savings** over time through trip history and leaderboard ranks.
+| Application | Main focus | Multiple routes | Fuel cost per route | CO₂ estimate | Savings history |
+|-------------|------------|-----------------|---------------------|--------------|-----------------|
+| Google Maps | Time, traffic | Yes | No | No | No |
+| Waze | Fastest time, crowdsourced traffic | Yes | No | No | No |
+| Fuel logging apps | Refuel tracking | No | Partial (logs only) | No | Partial |
+| This project | Lowest fuel cost | Yes (up to 3) | Yes | Yes | Yes (registered users) |
 
 ---
 
-## 1.4 Project Scope
+## 2.3 Eco-Routing and Fuel-Efficient Route Selection
 
-### What Is Included
+**Eco-routing** (also called green routing or energy-efficient routing) refers to selecting a path that reduces fuel use, emissions, or energy consumption—not only travel time or distance. Transport researchers have studied this topic because road vehicles contribute a large share of greenhouse gas emissions, and small changes in route choice can reduce fuel consumption (Barth et al., 2013; Demir et al., 2014).
 
-- User registration, login, guest mode, and password change;
-- Vehicle selection (four brands) or default **14 km/L**;
-- Route search with place autocomplete and optional GPS origin;
-- Up to three route alternatives with fuel cost and CO₂ estimates;
-- Interactive planning map and results dashboard;
-- GPS navigation on the recommended route;
-- Trip history, analytics, and leaderboard for logged-in users;
-- Admin settings for fuel price, emission factor, and user roles;
-- Server URL setup for mobile testing on a local network.
+Studies in eco-routing often compare a **fastest-time route** with an **eco-friendly route**. Results show that the eco-route may take slightly longer but can use less fuel and produce less CO₂, especially in urban areas with frequent stops or heavy traffic (Demir et al., 2014). Some work uses detailed vehicle models; other work uses simpler models based on distance and average efficiency—the approach used in this project.
 
-### What Is Not Included
+Commercial interest in eco-routing has grown. Some vehicle manufacturers and fleet systems offer “eco drive” scores or fuel-saving tips. However, **free consumer navigation apps rarely expose eco-routing as the primary recommendation rule**. This project applies a clear and transparent rule: **recommend the route with the lowest estimated fuel cost (RM)**, using distance and km/L, which is easy for users to understand.
 
-- iOS application;
-- Diesel, electric, or hybrid vehicle models;
-- Live fuel price from external APIs;
-- Offline maps or offline routing;
-- Payment, email, or push notifications;
-- Cloud hosting or production deployment;
-- Artificial intelligence or machine learning routing.
-
-### Assumptions
-
-- Users have internet access to the backend and to OSRM/Nominatim services.
-- For mobile testing, the phone and computer are on the same Wi‑Fi network.
-- Default values (RM 2.50/L, 2.31 kg CO₂/L, 14 km/L) are used for demonstration and can be changed by an admin during a session.
+The backend attempts to favour fuel-efficient paths by requesting routes from OSRM with **motorway exclusion** where supported, encouraging alternatives that may use less fuel on certain trips. This follows the general idea in eco-routing literature that highway speeds and driving patterns affect consumption, even though the project uses a simplified cost model rather than a physical engine simulation.
 
 ---
 
-## 1.5 Project Limitations
+## 2.4 Fuel Consumption and CO₂ Emission Estimation
 
-1. The system depends on **public OSRM and Nominatim services**, which have usage limits and are not suitable for large-scale commercial use without self-hosting.
-2. Only **petrol** vehicles are supported in the calculation model.
-3. **Authentication is simplified** for a prototype and is not the same as production systems that use secure tokens.
-4. **Admin settings** are stored in memory and return to default values after the server restarts.
-5. The project is designed for **local network deployment**, not cloud hosting.
-6. Testing is mainly **manual**; there is no automated test suite in the project source code.
-7. Place search is focused on **Malaysia** only.
-8. Fuel use is **estimated** from distance and km/L; actual consumption may differ due to traffic and driving style.
+To compare routes, the system must estimate **fuel used** and **CO₂ emitted**. In transport studies, two common approaches are used:
 
----
+1. **Microscopic models** — Detailed simulation of speed, acceleration, and engine behaviour. These are accurate but complex and need large amounts of data.
+2. **Macroscopic models** — Estimates based on trip distance, average speed, and fuel economy (km/L or L/100 km). These are simpler and suitable for route-level comparison (Barth et al., 2013).
 
-## 1.6 Methodology
+This project uses a **macroscopic model**, which matches the level of detail available from standard routing APIs:
 
-This project used an **iterative and incremental** development approach. Features were built step by step, tested, and improved rather than completed all at once.
+- **Fuel (litres)** = distance (km) ÷ efficiency (km/L)
+- **Cost (RM)** = fuel (L) × price per litre (RM/L)
+- **CO₂ (kg)** = fuel (L) × emission factor (kg CO₂/L)
 
-The main phases were:
+Government and environmental agencies publish **emission factors** for petrol and diesel. For example, the Intergovernmental Panel on Climate Change (IPCC) provides guidelines for calculating transport emissions from fuel consumption (IPCC, 2006). National energy and environment reports also publish values for road transport. The project default of **2.31 kg CO₂ per litre** of petrol and **RM 2.50 per litre** are configurable constants that an administrator can adjust during a session.
 
-1. **Backend** — API, database, routing, and cost calculation;
-2. **Frontend** — Login, vehicle setup, route search, and results;
-3. **Maps and mobile** — Planning map, Android app, and GPS support;
-4. **Navigation** — Turn-by-turn guidance and trip completion;
-5. **Admin and profile** — Settings, user roles, and password change;
-6. **Refinement** — Bug fixes, performance improvements, and documentation.
-
-This approach suits an **application-based** FYP because it focuses on delivering a working system that can be tested at each stage.
+Vehicle **fuel efficiency** varies by model, engine, load, and driving style. Consumer databases and manufacturer figures often report mixed-driving km/L values. This project includes a small catalogue of Malaysian market models (Toyota, Honda, Proton, Perodua) and a default of **14 km/L** when the user skips vehicle setup. This approach is consistent with practical apps that trade perfect accuracy for **useful comparison between routes** using the same assumptions.
 
 ---
 
-## 1.7 Target Audience
+## 2.5 Open Source Mapping and Routing Technologies
 
-The main users are **private car drivers in Malaysia** who use petrol vehicles.
+Because this is a student-developed application, it relies on **open-source** map and routing services instead of paid commercial map APIs. Three tools are central to the project.
 
-| User type | Description |
-|-----------|-------------|
-| **Guest** | Can plan routes, compare costs, and navigate; cannot save trip history |
-| **Registered user** | Can use trip history, analytics, leaderboard, and profile settings |
-| **Administrator** | Can change calculation settings and user roles |
+### 2.5.1 OpenStreetMap, Nominatim, and OSRM
 
-The interface uses a **bottom sheet** on phones and a **sidebar** on wider web screens (768 px and above).
+**OpenStreetMap (OSM)** is a collaborative map of the world. Volunteers and organisations contribute road networks and place data. OSM is widely used in research and in routing engines because the data is open and updatable (OpenStreetMap Foundation, 2024).
 
-Secondary readers include **project evaluators** and **future developers** who may extend the system.
+**Nominatim** is a geocoding service built on OSM data. It converts place names into coordinates (forward geocoding) and coordinates into addresses (reverse geocoding). This project uses Nominatim for place search and for displaying readable location names in trip history. Search is biased to **Malaysia** to improve local results (OpenStreetMap Foundation, 2024).
+
+**Open Source Routing Machine (OSRM)** is a high-performance routing engine for OSM road networks. It supports driving profiles, alternative routes, turn-by-turn steps, and encoded polylines for map display (Luxen & Vetter, 2011; Project OSRM, 2024). This project uses the public OSRM driving service to obtain up to **three** route alternatives between an origin and a destination.
+
+Using OSRM and Nominatim allows the project to demonstrate full routing functionality **without proprietary map licensing fees**. The trade-off is dependence on public servers, usage policies, and network availability—limitations noted in Chapter 1.
+
+### 2.5.2 Map Libraries and Mobile Location Services
+
+For map display, the project uses **Leaflet** for route preview during planning and **MapLibre GL** for GPS navigation with a tilted, driver-facing view. Both libraries are open source and commonly used in web mapping projects (Leaflet, 2024; MapLibre, 2024).
+
+For mobile deployment, **Capacitor** wraps the web application as a native Android shell and provides access to device **GPS** through a geolocation plugin (Ionic, 2024). This hybrid approach is common in modern application development because one codebase can serve web and mobile users.
+
+**Table 2.2** summarises the technologies reviewed and their role in this project.
+
+**Table 2.2** Open-source technologies used in the project
+
+| Technology | Purpose in literature / industry | Use in this project |
+|------------|----------------------------------|---------------------|
+| OpenStreetMap | Open road and place data | Base map data for routing and tiles |
+| Nominatim | Geocoding | Origin/destination search and place labels |
+| OSRM | Driving routes and steps | Up to 3 alternatives, navigation instructions |
+| Leaflet | Web map display | Planning-phase route map |
+| MapLibre GL | Vector map, navigation UI | GPS navigation view |
+| Capacitor | Hybrid mobile apps | Android app and GPS access |
 
 ---
 
-## 1.8 Summary
+## 2.6 Summary
 
-This project developed **Intelligent Route Cost & Efficiency**, a web and Android application that helps drivers compare routes by **fuel cost**, **fuel use**, **CO₂**, and **time**. The system recommends the lowest-cost route among up to three options, supports GPS navigation, and allows registered users to track savings through trip history and a leaderboard.
+The literature review and background study show that **navigation applications are mature**, but **fuel-cost and emissions-based route comparison remains limited** in mainstream consumer products. Google Maps and Waze solve direction finding and traffic avoidance well; they do not typically recommend the route with the lowest fuel cost or show CO₂ differences between alternatives using the driver’s vehicle efficiency.
 
-The problem is that common navigation tools do not provide integrated fuel and emissions comparison. Seven objectives guide the work, from route calculation to admin control. The scope covers petrol routes in Malaysia, three user roles, and local network deployment. Some limitations include reliance on public map services, simplified security, and estimated fuel values.
+Research on **eco-routing** supports the idea that alternative paths can save fuel and reduce emissions, sometimes with a small time penalty. Simpler **macroscopic models** (distance ÷ km/L, fuel × emission factor) are widely used when detailed engine data is unavailable and are appropriate for this project’s comparison goal.
 
-The rest of this report is organised as follows. **Chapter 2** reviews related literature. **Chapter 3** presents requirements analysis. **Chapter 4** describes system design. **Chapter 5** explains implementation. **Chapter 6** covers testing and evaluation. **Chapter 7** presents the conclusion. **References** and **Appendices** provide supporting material.
+**OpenStreetMap**, **Nominatim**, and **OSRM** provide a practical foundation for building a route planner without commercial map fees. **Leaflet**, **MapLibre GL**, and **Capacitor** support web and Android delivery with GPS navigation.
+
+Together, these findings justify the project design: a **Malaysia-focused**, **application-based** system that (1) fetches multiple routes, (2) estimates cost and CO₂ transparently, (3) recommends the lowest-cost option, (4) supports GPS navigation, and (5) records savings for registered users. The next chapter defines the requirements of this system in detail.
+
+---
+
+## References (Chapter 2)
+
+*Note: Verify all entries against your university referencing style (APA / IEEE). Add 2–3 journal or conference papers from your own library search where marked.*
+
+Apple. (2024). *Apple Maps*. Apple Inc. https://www.apple.com/maps/
+
+Barth, M., Boriboonsomsin, K., & Scora, G. (2013). Energy and emissions impacts of roadway traffic management strategies. *Transportation Research Record*, 2340(1), 47–56. https://doi.org/10.3141/2340-06
+
+Demir, E., Bektaş, T., & Laporte, G. (2014). A review of recent research on green road freight transportation. *European Journal of Operational Research*, 237(3), 775–793. https://doi.org/10.1016/j.ejor.2013.12.033
+
+Google. (2024). *Google Maps Platform documentation*. Google LLC. https://developers.google.com/maps
+
+Intergovernmental Panel on Climate Change. (2006). *2006 IPCC guidelines for national greenhouse gas inventories, Volume 2: Energy*. IPCC. https://www.ipcc-nggip.iges.or.jp/
+
+Ionic. (2024). *Capacitor documentation*. Ionic. https://capacitorjs.com/docs
+
+Leaflet. (2024). *Leaflet — An open-source JavaScript library for mobile-friendly interactive maps*. https://leafletjs.com/
+
+Luxen, D., & Vetter, C. (2011). Real-time routing with OpenStreetMap data. In *Proceedings of the 19th ACM SIGSPATIAL International Conference on Advances in Geographic Information Systems* (pp. 513–516). ACM. https://doi.org/10.1145/2093973.2094062
+
+MapLibre. (2024). *MapLibre GL JS*. MapLibre. https://maplibre.org/
+
+OpenStreetMap Foundation. (2024). *OpenStreetMap*. https://www.openstreetmap.org/
+
+OpenStreetMap Foundation. (2024). *Nominatim*. https://nominatim.org/
+
+Project OSRM. (2024). *OSRM — Open Source Routing Machine*. https://project-osrm.org/
+
+---
+
+*Author reminder: Search Google Scholar for “eco-routing navigation,” “fuel-efficient route mobile application,” and “CO₂ emission factor petrol Malaysia” to add local or recent papers to this list.*

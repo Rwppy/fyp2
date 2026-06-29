@@ -1,295 +1,601 @@
-# CHAPTER 3: REQUIREMENTS ANALYSIS
+# CHAPTER 4: SYSTEM DESIGN
 
-## 3.1 Overview
+## 4.1 Overview
 
-Requirements analysis defines **what the system must do** and **how well it must perform**. For this application-based project, requirements were gathered before and during development using fact-finding techniques suitable for a driver-focused mobile and web application.
+This chapter describes the **design** of Intelligent Route Cost & Efficiency. It explains how the system is structured, how users interact with it, and how data flows between the client, server, database, and external services.
 
-This chapter describes:
+The design is based on the requirements in Chapter 3. The system uses a **three-tier architecture**:
 
-1. The **fact-finding techniques** used (questionnaire and observation);
-2. How the results were **analysed** and linked to system features;
-3. The final **requirements** of Intelligent Route Cost & Efficiency, grouped as functional, non-functional, and user requirements.
+1. **Presentation tier** — React web app and Capacitor Android client;
+2. **Application tier** — Node.js and Express REST API;
+3. **Data tier** — SQLite database plus external OSRM and Nominatim services.
 
-The requirements listed in Section 3.3 match the implemented system described in later chapters.
-
----
-
-## 3.2 Fact-Finding Techniques
-
-Two main techniques were used to understand user needs and confirm the problem stated in Chapter 1:
-
-| Technique | Purpose |
-|-----------|---------|
-| **Questionnaire** | Collect opinions from **qualified drivers** (after screening) about route planning, fuel cost awareness, and desired app features |
-| **Observation** | Study how people use existing navigation apps and note gaps during early testing of the prototype |
-
-An informal **document review** (literature and product documentation in Chapter 2) supported both techniques but is not treated as a separate fact-finding method here.
+The chapter includes context, use case, activity, class, and sequence diagrams, followed by interface design for the main screens.
 
 ---
 
-### 3.2.1 Justification
+## 4.2 Context Diagram
 
-**Questionnaire** was chosen because the target users are **active private-car drivers who plan their own trips**. A short survey can reach many respondents quickly and at low cost. It is suitable for closed questions about fuel cost importance, interest in CO₂ information, and willingness to use a savings leaderboard. **Purposive sampling with screening questions** ensures that only qualified respondents—those who drive regularly, use navigation apps, and pay for fuel—provide opinions, rather than any car owner who may rarely drive or never choose routes.
+The **context diagram** shows the system as one process and its connections to external actors and services.
 
-**Observation** was chosen because navigation behaviour is **action-based**. Watching how users search for places, compare routes, and follow GPS directions reveals problems that they may not report in a survey—for example, whether fuel or cost information is visible, or whether the interface is easy to use on a phone.
+**Figure 4.1** Context diagram of Intelligent Route Cost & Efficiency
 
-Together, these techniques answer three questions for this project:
+```mermaid
+flowchart LR
+    Guest([Guest User])
+    User([Registered User])
+    Admin([Administrator])
 
-1. Do drivers care about **fuel cost and emissions** when choosing a route?
-2. Which **features** should the application include?
-3. What **quality expectations** apply (mobile use, speed, clarity of results)?
+    subgraph System["Intelligent Route Cost & Efficiency"]
+        APP[Web / Android Client]
+        API[Express REST API]
+        DB[(SQLite Database)]
+        APP <-->|HTTP JSON| API
+        API <-->|SQL| DB
+    end
 
----
+    OSRM[OSRM Routing Service]
+    NOM[Nominatim Geocoding]
+    GPS[Device GPS]
 
-### 3.2.2 Questionnaire Design
+    Guest --> APP
+    User --> APP
+    Admin --> APP
 
-#### Respondent selection and screening
+    API --> OSRM
+    API --> NOM
+    APP --> NOM
+    APP --> GPS
+```
 
-The questionnaire did **not** target everyone who owns a car. Car ownership alone does not mean a person plans routes, pays for fuel, or uses navigation apps regularly. To obtain opinions from respondents who can **meaningfully judge** a route-planning and fuel-comparison application, **purposive sampling** was used: only people who meet defined eligibility criteria were invited to complete the survey.
+**Table 4.1** External entities and interactions
 
-**Table 3.1** lists the eligibility criteria and the reason each criterion improves the quality of the responses.
+| Entity | Type | Interaction |
+|--------|------|-------------|
+| Guest user | Actor | Plans routes and navigates without saving history |
+| Registered user | Actor | Plans, navigates, saves trips, uses leaderboard |
+| Administrator | Actor | Edits fuel/emission config and user roles |
+| SQLite database | Data store | Stores users, trips, leaderboard entries |
+| OSRM | External service | Returns driving routes, polylines, turn steps |
+| Nominatim | External service | Forward/reverse geocoding for places |
+| Device GPS | Hardware | Provides live position during navigation |
 
-**Table 3.1** Questionnaire respondent eligibility criteria
-
-| Criterion | Requirement | Justification |
-|-----------|-------------|---------------|
-| E1 | Holds a **valid driving licence** | Respondents must legally drive and understand real on-road journey planning. |
-| E2 | Drives a **private petrol car** at least **3 times per week** (or ≥150 km per week) | Regular drivers face repeated fuel and route decisions; occasional drivers may not reflect typical use of a navigation tool. |
-| E3 | **Plans own driving routes** (not only a passenger) | The app supports the person who chooses origin, destination, and route; passengers cannot evaluate route-comparison features fairly. |
-| E4 | Uses a **navigation app** (e.g. Google Maps, Waze) at least **once per week** for driving trips | Target users already rely on digital routing; they can compare the proposed system with current tools they know. |
-| E5 | **Pays for own petrol** at least part of the time (not fully fleet-funded with no personal fuel cost) | Fuel cost in RM is meaningful only to respondents who experience petrol spending directly. |
-| E6 | Makes **regular trips within Malaysia** | The system uses Malaysia-biased geocoding and local vehicle data; overseas-only drivers are outside project scope. |
-| E7 | Uses a **smartphone** for navigation or pre-trip planning | The product is a web and Android app; respondents must be able to judge mobile usability. |
-| E8 | Age **21 and above**, with at least **1 year** of driving experience | Ensures basic driving maturity beyond newly licensed users who may not yet have stable route habits. |
-
-Respondents who **failed any screening question** were excluded from the main survey. This filtering improves validity: answers reflect people who **actually experience** the problem described in Chapter 1—choosing between routes without clear fuel and CO₂ comparison—rather than theoretical opinions from non-drivers or rare car users.
-
-**Table 3.2** Screening questions (administered before the main questionnaire)
-
-| ID | Screening question | Accept if… |
-|----|-------------------|------------|
-| S1 | Do you hold a current valid driving licence? | Yes |
-| S2 | How often do you drive a private petrol car? | At least 3 days per week **or** ≥150 km per week |
-| S3 | Do you usually plan the route yourself when you drive? | Yes, always or usually |
-| S4 | How often do you use Google Maps, Waze, or similar for driving? | At least once per week |
-| S5 | Do you pay for your own petrol (fully or partly)? | Yes |
-| S6 | Are most of your regular drives within Malaysia? | Yes |
-| S7 | Do you use a smartphone for navigation or trip planning? | Yes |
-| S8 | How long have you been driving regularly? | 1 year or more |
-
-The main questionnaire was shown **only** to respondents who passed all screening items. This is stricter than “car owner” sampling and aligns the survey population with the **intended users** of Intelligent Route Cost & Efficiency: active, self-planning drivers who already use navigation apps and care about practical trip decisions.
-
-#### Questionnaire structure
-
-The main questionnaire used **demographic questions**, **Likert-scale** items (1 = Strongly disagree, 5 = Strongly agree), and **multiple-choice** questions.
-
-**Table 3.3** shows the main sections and sample questions.
-
-**Table 3.3** Questionnaire structure (main survey, after screening)
-
-| Section | Sample questions |
-|---------|------------------|
-| A. Profile | Age group; vehicle type (petrol); approximate km/L if known; primary navigation app |
-| B. Current behaviour | Do you compare more than one route before driving? How often does fuel cost influence your route choice? |
-| C. Fuel and cost | I consider petrol cost when planning a trip. (Likert) I would use an app that shows RM cost per route. (Likert) |
-| D. Environment | I am interested in seeing CO₂ estimates for each route. (Likert) |
-| E. Features | Which features would you use? (Route comparison / GPS navigation / Trip history / Leaderboard) |
-| F. Open comment | What is missing in your current navigation app? |
-
-The full questionnaire (screening + main sections) should be attached in **Appendix**. Respondents were recruited from [insert: e.g. university commuters who drive, local driving communities, social media groups for Malaysian drivers—**to be completed by author**]. Report both: (a) number of people invited, and (b) number who **passed screening** and completed the main survey. Target qualified sample size: [insert N, e.g. 20–30—**to be completed by author**].
-
-#### 3.2.2.1 Analysis on Results
-
-Survey answers were analysed as follows:
-
-1. **Descriptive statistics** — Percentage of respondents for each multiple-choice option; mean score for each Likert item.
-2. **Requirement mapping** — Each high-scoring need was translated into a system function (see Table 3.4).
-3. **Priority** — Features mentioned by most respondents or rated 4–5 on Likert scales were marked **High** priority; others **Medium** or **Low**.
-
-**Table 3.4** Example mapping from questionnaire themes to requirements
-
-| Questionnaire theme | Typical user response (to be filled from your data) | Requirement derived |
-|--------------------|-----------------------------------------------------|---------------------|
-| Fuel cost awareness | [Insert % who agree] | Show trip cost (RM) and fuel (L) per route |
-| Route comparison | [Insert % who compare routes] | Provide up to 3 route alternatives |
-| CO₂ interest | [Insert mean Likert score] | Show CO₂ (kg) and savings vs alternative |
-| Navigation | [Insert % who want in-app GPS] | GPS turn-by-turn navigation |
-| Personal tracking | [Insert % who want history] | Trip history and analytics (registered users) |
-| Motivation | [Insert % interested in leaderboard] | Leaderboard and rank tiers |
-
-**Table 3.5** Template for summarising Likert results (complete after data collection; **qualified respondents only**)
-
-| Statement | Mean score (1–5) | % Agree (4–5) |
-|-----------|------------------|---------------|
-| I consider petrol cost when planning a trip. | ___ | ___% |
-| I would use an app that shows RM cost for each route. | ___ | ___% |
-| I want to see CO₂ estimates for each route option. | ___ | ___% |
-| I would register an account to save my trip savings. | ___ | ___% |
-| A leaderboard would motivate me to choose cheaper routes. | ___ | ___% |
-
-*Author note: Replace blank cells with your actual survey results before final submission. If the questionnaire has not yet been conducted, complete this table during the evaluation phase in Chapter 6 and refer back here or state “survey pending” in the draft.*
-
-Based on the **problem definition in Chapter 1** and **background study in Chapter 2**, the following needs were confirmed as relevant even before final survey totals are entered:
-
-- Users want **clear comparison** of routes, not only fastest time.
-- **RM cost and litres** are easier to understand than abstract scores alone.
-- **Mobile use** is essential; many respondents drive with a phone mounted in the car.
-- Some users will use the app **without registering**; guest access is required.
+The client talks to the backend on port **4000** (default). On mobile, the user may set the PC’s LAN address in **Server Settings** before using the app.
 
 ---
 
-### 3.2.3 Observation
+## 4.3 Use Case Diagram
 
-Observation was carried out in two ways:
+**Figure 4.2** Use case diagram
 
-**1. Observation of existing navigation applications**  
-Google Maps and Waze were used for sample trips within Malaysia (e.g. city to city, short urban trips). The observer noted which information appears on the results screen, whether multiple routes are offered, and whether fuel cost or CO₂ is shown.
+```mermaid
+flowchart TB
+    Guest((Guest))
+    User((Registered User))
+    Admin((Administrator))
 
-**2. Observation during prototype testing**  
-During development, the project prototype was tested on **web browser** and **Android phone** connected to a LAN backend. The observer noted user flow steps, layout on small screens, and errors (e.g. connection to server, location permission).
+    subgraph System["Route Estimator System"]
+        UC1[Register / Login]
+        UC2[Configure Vehicle]
+        UC3[Plan Route]
+        UC4[View Results]
+        UC5[Start Navigation]
+        UC6[Complete Trip]
+        UC7[View Trip History]
+        UC8[View Leaderboard]
+        UC9[Change Password]
+        UC10[Configure Server URL]
+        UC11[Manage Calculation Config]
+        UC12[Manage User Roles]
+    end
 
-#### 3.2.3.1 Analysis on Results
+    Guest --> UC1
+    Guest --> UC2
+    Guest --> UC3
+    Guest --> UC4
+    Guest --> UC5
+    Guest --> UC10
 
-**Table 3.6** summarises observation findings from existing apps and prototype testing.
+    User --> UC1
+    User --> UC2
+    User --> UC3
+    User --> UC4
+    User --> UC5
+    User --> UC6
+    User --> UC7
+    User --> UC8
+    User --> UC9
+    User --> UC10
 
-**Table 3.6** Observation findings and design response
+    Admin --> UC1
+    Admin --> UC3
+    Admin --> UC11
+    Admin --> UC12
+```
 
-| Observation | Finding | Effect on requirements |
-|-------------|---------|----------------------|
-| Google Maps / Waze | Show time and distance; multiple routes available | System must support **multiple routes** and show **duration** |
-| Google Maps / Waze | Fuel cost and CO₂ not shown per route | System must **calculate and display RM, L, and kg CO₂** |
-| Google Maps / Waze | Recommendation is usually fastest route | System must **recommend lowest fuel cost** explicitly |
-| Prototype (mobile) | `localhost` backend not reachable from phone | **Server URL settings** and LAN deployment required |
-| Prototype (mobile) | Small screen needs scrollable panel | **Bottom sheet** layout on mobile; sidebar on desktop |
-| Prototype | Users may skip vehicle setup | **Guest path** and **default 14 km/L** option required |
-| Prototype | Place names sometimes show as coordinates | **Reverse geocoding** for trip history labels |
-| Prototype | GPS needed for navigation and origin | **Location permission** and Capacitor geolocation |
+**Table 4.2** Use case summary
 
-These observations **support the questionnaire themes** and were used together with survey input to finalise the requirement list in Section 3.3.
-
----
-
-## 3.3 Requirements
-
-Requirements are divided into three groups:
-
-- **User requirements** — what users need in plain language;
-- **Functional requirements** — what the system shall do;
-- **Non-functional requirements** — quality attributes (security, performance, usability).
-
-Each functional requirement has an ID for traceability in design and testing chapters.
-
----
-
-### 3.3.1 Functional Requirements
-
-**Table 3.7** Functional requirements
-
-| ID | Requirement description | Priority |
-|----|-------------------------|----------|
-| FR-01 | The system shall allow users to **register** with username and password (optional email). | High |
-| FR-02 | The system shall allow users to **log in** and **log out**. | High |
-| FR-03 | The system shall allow users to continue as **guest** without an account. | Medium |
-| FR-04 | The system shall let users **select a vehicle** (brand/model) or skip with **default 14 km/L**. | High |
-| FR-05 | The system shall accept **origin and destination** with place autocomplete (Malaysia-biased). | High |
-| FR-06 | The system shall allow **current GPS location** as origin. | Medium |
-| FR-07 | The system shall request up to **three driving routes** between origin and destination. | High |
-| FR-08 | The system shall calculate **fuel (L), cost (RM), and CO₂ (kg)** for each route. | High |
-| FR-09 | The system shall **recommend the route with the lowest fuel cost**. | High |
-| FR-10 | The system shall display **comparison values** (money, fuel, CO₂, time) vs an alternative route. | High |
-| FR-11 | The system shall show routes on a **planning map**. | High |
-| FR-12 | The system shall provide **GPS navigation** with turn-by-turn guidance on the recommended route. | High |
-| FR-13 | The system shall detect **off-route** (80 m) and **arrival** at destination. | Medium |
-| FR-14 | Registered users shall **complete a trip** and save **trip history**. | High |
-| FR-15 | The system shall update **leaderboard** statistics when savings are recorded. | Medium |
-| FR-16 | Registered users shall view **trip analytics** (totals and recent trips). | High |
-| FR-17 | Registered users shall **change password**. | Medium |
-| FR-18 | Admin users shall **edit fuel price and emission factors**. | Medium |
-| FR-19 | Admin users shall **assign user roles** (admin/user). | Medium |
-| FR-20 | Users shall configure **backend server URL** and test connection (mobile/LAN). | High |
+| ID | Use case | Primary actor |
+|----|----------|---------------|
+| UC-01 | Register / Login | Guest, User, Admin |
+| UC-02 | Configure Vehicle | Guest, User |
+| UC-03 | Plan Route | Guest, User, Admin |
+| UC-04 | View Results | Guest, User |
+| UC-05 | Start Navigation | Guest, User |
+| UC-06 | Complete Trip | Registered User |
+| UC-07 | View Trip History | Registered User |
+| UC-08 | View Leaderboard | Guest, User |
+| UC-09 | Change Password | Registered User |
+| UC-10 | Configure Server URL | All users |
+| UC-11 | Manage Calculation Config | Administrator |
+| UC-12 | Manage User Roles | Administrator |
 
 ---
 
-### 3.3.2 Non-Functional Requirements
+### Use Case Description
 
-**Table 3.8** Non-functional requirements
+#### UC-03: Plan Route
 
-| ID | Requirement | Category | Description |
-|----|-------------|----------|-------------|
-| NFR-01 | Passwords shall be stored using **bcrypt** hashing. | Security | Protect user credentials |
-| NFR-02 | Protected API routes shall require a **valid user ID**. | Security | Trips and password change |
-| NFR-03 | Admin functions shall be restricted to **admin role**. | Security | Config and user management |
-| NFR-04 | The UI shall be **usable on mobile and desktop** (bottom sheet / sidebar). | Usability | Screen width ≥768 px uses sidebar |
-| NFR-05 | Input fields on mobile shall use **readable font size** (≥16 px) to avoid zoom issues. | Usability | iOS/Android web view |
-| NFR-06 | The application shall **recover from render errors** with a reload option. | Reliability | Error boundary |
-| NFR-07 | API inputs shall be **validated** before processing. | Reliability | Server-side validation |
-| NFR-08 | Map and secondary screens shall **load efficiently** (lazy loading). | Performance | Reduce initial load time |
-| NFR-09 | GPS updates during navigation shall not **overload** the interface. | Performance | Throttled position updates |
-| NFR-10 | The database shall support **concurrent reads/writes** (WAL mode). | Performance | SQLite configuration |
-| NFR-11 | The backend shall support **CORS** for web and mobile clients on LAN. | Security | Cross-origin requests |
-| NFR-12 | Calculation constants shall be **configurable** by admin during a session. | Maintainability | Fuel price, emission factor |
-| NFR-13 | The interface shall respect **reduced motion** user preferences. | Usability | Accessibility |
+| Item | Description |
+|------|-------------|
+| **Use case ID** | UC-03 |
+| **Name** | Plan Route |
+| **Actors** | Guest, Registered User, Administrator |
+| **Description** | The user enters an origin and destination. The system geocodes both points, fetches route alternatives, calculates fuel cost and CO₂, and returns results. |
 
----
+**Preconditions**
 
-### 3.3.3 User Requirements
+- The user has passed the authentication or guest step and completed (or skipped) vehicle setup.
+- The client can reach the backend API (health check succeeds).
+- Network access to OSRM and Nominatim is available.
 
-User requirements describe needs from the **user’s point of view**. They were derived from the questionnaire, observation, and project objectives.
+**Normal flow**
 
-**Guest user**
+| Step | Actor / system | Description |
+|------|----------------|-------------|
+| 1 | User | Enters origin and destination (or selects from autocomplete / GPS origin). |
+| 2 | User | Clicks **Calculate**. |
+| 3 | System | Sends `POST /api/route` with place names, coordinates, and vehicle efficiency. |
+| 4 | System | Backend geocodes locations via Nominatim if needed. |
+| 5 | System | Backend requests up to three routes from OSRM. |
+| 6 | System | Backend calculates fuel (L), cost (RM), and CO₂ (kg) per route; selects lowest-cost route as recommended. |
+| 7 | System | Returns routes, comparison stats, and map polylines to the client. |
+| 8 | System | Displays results dashboard and planning map. |
 
-| ID | User requirement |
-|----|------------------|
-| UR-01 | As a guest, I want to plan a route without creating an account so that I can try the app quickly. |
-| UR-02 | As a guest, I want to see fuel cost and CO₂ for each route so that I can choose a cheaper or cleaner option. |
-| UR-03 | As a guest, I want GPS navigation on the recommended route so that I can drive without a separate map app. |
+**Postconditions**
 
-**Registered user**
+- Route result is stored in client state (`result`).
+- Application phase changes to **results**.
+- User can view comparison or start navigation.
 
-| ID | User requirement |
-|----|------------------|
-| UR-04 | As a registered user, I want to log in so that my trips and savings are saved. |
-| UR-05 | As a registered user, I want to select my car model so that fuel estimates match my vehicle. |
-| UR-06 | As a registered user, I want to compare Route 1 and Route 2 side by side so that I understand money and emissions saved. |
-| UR-07 | As a registered user, I want to view my trip history so that I can see past journeys and total savings. |
-| UR-08 | As a registered user, I want to appear on a leaderboard so that I stay motivated to save fuel and CO₂. |
-| UR-09 | As a registered user, I want to change my password so that my account stays secure. |
+**Alternative flows and exceptions**
 
-**Administrator**
+| Condition | Handling |
+|-----------|----------|
+| A1: User uses **Current location** as origin | GPS coordinates sent; reverse geocode applied for display. |
+| A2: User skipped vehicle setup | Default **14 km/L** sent as `efficiencyOverride`. |
+| E1: Location not found | API returns 400; error message shown on form. |
+| E2: OSRM failure | API returns 502/500; user asked to retry. |
+| E3: Backend unreachable | Network error; user prompted to check Server URL (mobile). |
 
-| ID | User requirement |
-|----|------------------|
-| UR-10 | As an admin, I want to change fuel price and emission values so that calculations reflect current assumptions. |
-| UR-11 | As an admin, I want to manage user roles so that only trusted users can access admin functions. |
+**Related non-functional requirements**
 
-**All users (mobile)**
-
-| ID | User requirement |
-|----|------------------|
-| UR-12 | As a mobile user, I want to set the server address of my PC so that the phone app can connect on Wi‑Fi. |
-| UR-13 | As a mobile user, I want a simple layout on a small screen so that I can use the app while planning a trip. |
-
-**Table 3.9** Traceability: user requirements to functional requirements (sample)
-
-| User req. | Related functional req. |
-|-----------|-------------------------|
-| UR-02, UR-06 | FR-08, FR-09, FR-10 |
-| UR-03 | FR-12, FR-13 |
-| UR-07 | FR-14, FR-16 |
-| UR-08 | FR-15 |
-| UR-10 | FR-18 |
-| UR-12 | FR-20 |
+- NFR-07: API input validated with Zod.
+- NFR-08: Map modules loaded lazily after results.
+- NFR-11: CORS allows web and Capacitor clients.
 
 ---
 
-## 3.4 Summary
+#### UC-05: Start Navigation
 
-This chapter explained how requirements were collected using a **questionnaire** (with **eligibility screening**) and **observation**. Screening ensured that only **qualified drivers**—those who plan routes regularly, use navigation apps, pay for petrol, and drive in Malaysia—contributed opinions on fuel-comparison features. The questionnaire captured views on fuel cost, CO₂ information, and desired features; results are summarised in tables that the author completes with actual survey data. Observation of Google Maps, Waze, and the project prototype confirmed that fuel and emissions comparison is missing in mainstream apps and that mobile deployment needs special attention (LAN server URL, responsive layout, GPS permissions).
+| Item | Description |
+|------|-------------|
+| **Use case ID** | UC-05 |
+| **Name** | Start Navigation |
+| **Actors** | Guest, Registered User |
+| **Description** | The user starts GPS turn-by-turn navigation on the recommended route. |
 
-From this analysis, **20 functional requirements**, **13 non-functional requirements**, and **13 user requirements** were defined. Together they specify Intelligent Route Cost & Efficiency as a system that compares up to three routes, recommends the lowest fuel-cost option, supports GPS navigation, and records savings for registered users.
+**Preconditions**
 
-Chapter 4 describes how these requirements are met through **system design**, including architecture, database structure, and user interface flow.
+- Route results are available (UC-03 completed).
+- Device location permission can be granted.
+
+**Normal flow**
+
+| Step | Actor / system | Description |
+|------|----------------|-------------|
+| 1 | User | Clicks **Start navigation** on results screen. |
+| 2 | System | Sets phase to **navigate**; loads MapLibre navigation map. |
+| 3 | System | Requests GPS permission; starts position watch. |
+| 4 | System | Snaps position to route polyline; shows turn instruction and remaining distance. |
+| 5 | System | Updates map puck and camera bearing as user moves. |
+| 6 | User | Follows guidance until arrival or taps **End navigation**. |
+
+**Postconditions**
+
+- Navigation state cleared when user ends trip.
+- If user completes trip (UC-06), savings may be saved (registered user only).
+
+**Alternative flows and exceptions**
+
+| Condition | Handling |
+|-----------|----------|
+| A1: User goes **off route** (>80 m) | Warning shown on navigation overlay. |
+| A2: User taps **Recenter** | Map camera follows GPS again. |
+| A3: User arrives (<80 m from destination) | Arrival state shown; user may complete trip. |
+| E1: Location permission denied | Error message; navigation cannot start. |
+
+**Related non-functional requirements**
+
+- NFR-04: Navigation UI optimised for mobile (overlay on full-screen map).
+- NFR-09: GPS updates throttled to reduce UI lag.
 
 ---
 
-*Author reminder: (1) Insert questionnaire in Appendix. (2) Fill Tables 3.3 and sample sizes in 3.2.2.1. (3) Fix section numbers in your Word template if your faculty uses 3.3.x only under Requirements.*
+#### UC-06: Complete Trip (summary)
+
+| Item | Description |
+|------|-------------|
+| **Actors** | Registered User |
+| **Preconditions** | User logged in; navigation active or just finished. |
+| **Normal flow** | User taps **Complete trip** → system computes savings vs alternative route → updates leaderboard → saves trip to SQLite → shows confirmation. |
+| **Exceptions** | Guest user sees message to log in; save skipped. |
+
+*Other use cases (UC-01, UC-07–UC-12) follow the same structure and are mapped to components in Section 4.7.*
+
+---
+
+## 4.4 Activity Diagram
+
+**Figure 4.3** Activity diagram — main user journey (plan route to complete trip)
+
+```mermaid
+flowchart TD
+    Start([Start App]) --> Auth{Logged in or guest?}
+    Auth -->|Login/Register| Car[Vehicle Setup]
+    Auth -->|Guest| Car
+    Car --> Search[Enter Origin & Destination]
+    Search --> Calc[Calculate Route]
+    Calc --> OK{Routes returned?}
+    OK -->|No| Err[Show Error]
+    Err --> Search
+    OK -->|Yes| Results[View Results & Map]
+    Results --> NavChoice{Start navigation?}
+    NavChoice -->|No| NewRoute[New Route / Adjust]
+    NewRoute --> Search
+    NavChoice -->|Yes| GPS[Grant GPS Permission]
+    GPS --> Navigate[Turn-by-turn Navigation]
+    Navigate --> Done{Complete or End?}
+    Done -->|End| Results
+    Done -->|Complete| Save{Logged in?}
+    Save -->|Yes| Record[Save Trip & Leaderboard]
+    Save -->|No| Msg[Show guest message]
+    Record --> End([End])
+    Msg --> End
+```
+
+**Figure 4.4** Activity diagram — backend route calculation
+
+```mermaid
+flowchart TD
+    A([Receive POST /api/route]) --> V[Validate request body]
+    V --> G[Geocode origin & destination]
+    G --> R[Call OSRM for alternatives]
+    R --> C[Calculate fuel, cost, CO₂ per route]
+    C --> P[Pick lowest cost route]
+    P --> D[Build comparison stats]
+    D --> J([Return JSON response])
+```
+
+---
+
+## 4.5 Class Diagram
+
+The system is implemented in JavaScript (not classical OOP). **Figure 4.5** shows a **logical class diagram** of main entities, client modules, and server services and their relationships.
+
+**Figure 4.5** Logical class / component diagram
+
+```mermaid
+classDiagram
+    class User {
+        +String userId
+        +String username
+        +String role
+        +String passwordHash
+    }
+    class Trip {
+        +String tripId
+        +String userId
+        +String originSummary
+        +String destinationSummary
+        +Float distanceKm
+        +Float costRm
+        +Float emissionKg
+        +Float moneySavedRm
+    }
+    class LeaderboardEntry {
+        +String userId
+        +Float totalEmissionsSaved
+        +Float totalMoneySaved
+        +Int tripCount
+    }
+    class RouteResult {
+        +String id
+        +Float distanceKm
+        +Float durationMin
+        +Float costRM
+        +Float emissionKg
+        +String polyline
+    }
+
+    class App {
+        +phase
+        +result
+        +handleSubmit()
+        +startNavigation()
+        +completeNavigation()
+    }
+    class RouteForm
+    class ResultsDashboard
+    class NavigationOverlay
+    class MapPreview
+
+    class AuthService {
+        +registerUser()
+        +loginUser()
+        +changePassword()
+    }
+    class MapsService {
+        +getRouteAlternatives()
+        +geocode()
+    }
+    class CalcEngine {
+        +calculateEstimates()
+        +pickFuelEfficientRoute()
+    }
+    class TripService {
+        +recordTrip()
+        +getAnalytics()
+    }
+
+    User "1" --> "*" Trip : completes
+    User "1" --> "0..1" LeaderboardEntry : has
+    App --> RouteForm
+    App --> ResultsDashboard
+    App --> NavigationOverlay
+    App --> MapPreview
+    App ..> AuthService : HTTP
+    RouteForm ..> MapsService : via API
+    MapsService ..> CalcEngine : routes
+    TripService --> Trip : persists
+```
+
+**Figure 4.6** Entity-relationship diagram (database)
+
+```mermaid
+erDiagram
+    USERS ||--o{ TRIPS : records
+    USERS ||--o| LEADERBOARD_ENTRIES : ranks
+
+    USERS {
+        text user_id PK
+        text username UK
+        text password_hash
+        text role
+        text created_at
+    }
+    TRIPS {
+        text trip_id PK
+        text user_id FK
+        text origin_summary
+        text destination_summary
+        real distance_km
+        real cost_rm
+        real emission_kg
+        real money_saved_rm
+        text completed_at
+    }
+    LEADERBOARD_ENTRIES {
+        text user_id PK
+        real total_emissions_saved
+        real total_money_saved
+        int trip_count
+    }
+```
+
+---
+
+## 4.6 Sequence Diagram
+
+**Figure 4.7** Sequence diagram — plan route (`POST /api/route`)
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant RF as RouteForm
+    participant API as Express API
+    participant MAP as maps.js
+    participant NOM as Nominatim
+    participant OSRM as OSRM
+    participant CAL as calc.js
+
+    User->>RF: Enter origin, destination, Calculate
+    RF->>API: POST /api/route (JSON)
+    API->>MAP: getRouteAlternatives()
+    MAP->>NOM: Geocode origin
+    NOM-->>MAP: Coordinates
+    MAP->>NOM: Geocode destination
+    NOM-->>MAP: Coordinates
+    MAP->>OSRM: Request alternatives (max 3)
+    OSRM-->>MAP: Routes, polylines, steps
+    MAP->>CAL: calculateEstimates(routes)
+    CAL-->>MAP: Enriched routes + recommendation
+    MAP-->>API: Result object
+    API-->>RF: JSON response
+    RF-->>User: Show ResultsDashboard + map
+```
+
+**Figure 4.8** Sequence diagram — complete trip (registered user)
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant NO as NavigationOverlay
+    participant App
+    participant API as Express API
+    participant DB as SQLite
+
+    User->>NO: Tap Complete trip
+    NO->>App: onComplete()
+    App->>App: computeTripSavings()
+    App->>API: POST /api/leaderboard/add
+    API->>DB: Update leaderboard_entries
+    App->>API: POST /api/trips (X-User-Id)
+    API->>DB: INSERT trip
+    API-->>App: Success
+    App-->>User: Confirmation message
+```
+
+---
+
+## 4.7 Interface Design
+
+The user interface is a **single-page application** controlled by a `phase` state: `auth` → `car` → `search` → `results` → `navigate`. On screens **≥768 px** wide, the form appears in a **left sidebar**; on mobile and Android, it uses a **bottom sheet** over a full-screen map.
+
+**Table 4.3** Application phases and main components
+
+| Phase | Purpose | Main component |
+|-------|---------|----------------|
+| auth | Login, register, or guest | `AuthModal.jsx` |
+| car | Select vehicle or skip (14 km/L) | `CarSetupPanel.jsx` / `CarSetupModal.jsx` |
+| search | Enter origin and destination | `RouteForm.jsx` |
+| results | Compare routes, start navigation | `ResultsDashboard.jsx` |
+| navigate | GPS guidance | `NavigationOverlay.jsx` + `NavigationMapView.jsx` |
+
+Modals (lazy-loaded): `Leaderboard.jsx`, `TripHistoryDashboard.jsx`, `ProfileSettings.jsx`, `ServerSettings.jsx`, `AdminConfigModal.jsx`. Admin full page: `/admin` → `AdminPage.jsx`.
+
+---
+
+### 4.7.1 Authentication Screen
+
+- **Layout:** Centred modal on dimmed background; mobile uses rounded bottom sheet style.
+- **Elements:** Username, password, optional email (register), toggle Login/Register, **Continue as guest**.
+- **Flow:** Success → vehicle setup phase; guest → vehicle setup without `userId`.
+
+*Screenshot placeholder: Figure 4.9 — Authentication screen*
+
+---
+
+### 4.7.2 Vehicle Setup Screen
+
+- **Layout:** Bottom sheet (mobile) or modal (desktop sidebar flow).
+- **Elements:** Brand carousel (Toyota, Honda, Proton, Perodua), model carousel, **Continue**, **Skip/Close** (uses default 14 km/L).
+- **Feedback:** Selected brand/model shown in top bar during later phases.
+
+*Screenshot placeholder: Figure 4.10 — Vehicle setup screen*
+
+---
+
+### 4.7.3 Route Search and Results
+
+**Route search (`RouteForm.jsx`)**
+
+- Origin field with autocomplete (Nominatim, Malaysia-biased).
+- **Current location** button for GPS origin.
+- Destination field with autocomplete.
+- **Calculate** and **Clear** buttons.
+
+**Results (`ResultsDashboard.jsx`)**
+
+- Recommended route card (green) with distance, duration, RM cost, CO₂, fuel (L).
+- Alternative route card (amber) when two distinct paths exist.
+- Combined savings card (money, fuel, CO₂ vs alternative).
+- **Start navigation** button.
+- Planning map (`PlanningMapView.jsx`) shows polylines behind the sheet.
+
+*Screenshot placeholder: Figure 4.11 — Route search screen*  
+*Screenshot placeholder: Figure 4.12 — Results and comparison screen*
+
+---
+
+### 4.7.4 Navigation Screen
+
+- **Layout:** Full-screen MapLibre map; navigation overlay at top and bottom.
+- **Elements:** Turn instruction banner, distance to turn, ETA, off-route warning, **Recenter**, **End navigation**, **Complete trip**.
+- **Map:** Green remaining route, grey travelled segment, user puck with bearing.
+- **Thresholds:** Off-route and arrival at **80 m**.
+
+*Screenshot placeholder: Figure 4.13 — GPS navigation screen*
+
+---
+
+### 4.7.5 Trip History and Leaderboard
+
+**Trip History (`TripHistoryDashboard.jsx`)**
+
+- Hero cards: total money saved, fuel saved, CO₂ saved.
+- Stat grid: trip count, distance, average emissions.
+- Scrollable trip list with resolved place names.
+
+**Leaderboard (`Leaderboard.jsx`)**
+
+- Ranked list with tier badge (Bronze–Legend).
+- Personal stats for logged-in user.
+
+*Screenshot placeholder: Figure 4.14 — Trip history dashboard*  
+*Screenshot placeholder: Figure 4.15 — Leaderboard screen*
+
+---
+
+### 4.7.6 Profile, Server Settings, and Admin
+
+| Screen | Access | Main actions |
+|--------|--------|--------------|
+| **Profile** | Logged-in user (burger menu) | Change password |
+| **Server Settings** | All users (admin menu link) | Set API URL, test connection |
+| **Admin config** | Admin only | Edit fuel price, CO₂ factor, feature flags |
+| **Admin users** | Admin only | Promote/demote user roles |
+| **Admin page** | `/admin` route | Full-page config and user tabs |
+
+*Screenshot placeholder: Figure 4.16 — Server settings*  
+*Screenshot placeholder: Figure 4.17 — Admin configuration*
+
+---
+
+### 4.7.7 Navigation Flow Summary
+
+**Figure 4.18** UI navigation flow
+
+```mermaid
+flowchart LR
+    A[Auth] --> B[Car Setup]
+    B --> C[Search]
+    C --> D[Results]
+    D --> E[Navigate]
+    E --> D
+    D --> C
+
+    C -.-> H[Trip History]
+    C -.-> L[Leaderboard]
+    C -.-> P[Profile]
+    C -.-> S[Server Settings]
+    C -.-> AD[Admin Config]
+```
+
+Solid arrows: main phase flow. Dashed arrows: modal overlays from top menu.
+
+---
+
+## 4.8 Summary
+
+This chapter presented the system design of Intelligent Route Cost & Efficiency. The **context diagram** showed the client, API, SQLite database, and external OSRM/Nominatim services. The **use case diagram** defined twelve main functions for guest, registered, and admin users, with detailed descriptions for **Plan Route** and **Start Navigation**.
+
+**Activity diagrams** described the user journey from login to trip completion and the backend route-calculation process. The **class diagram** and **ERD** modelled users, trips, leaderboard data, and major software modules. **Sequence diagrams** illustrated route planning and trip saving.
+
+**Interface design** followed a phase-based flow with responsive layout (sidebar vs bottom sheet). Main screens cover authentication, vehicle setup, search, results, navigation, history, leaderboard, and admin tools.
+
+Chapter 5 explains how these designs were **implemented** in code. Chapter 6 describes **testing** of the designed features.
+
+---
+
+*Author reminder: Export mermaid diagrams as PNG/SVG for the report (Figure 4.1–4.18). Insert actual screenshots in Section 4.7.*

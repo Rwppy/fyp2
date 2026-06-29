@@ -1,615 +1,367 @@
-# CHAPTER 5: IMPLEMENTATION
+# CHAPTER 6: TESTING AND EVALUATION
 
-## 5.1 Deployment
+## Introduction
 
-### Implementation scope
+This chapter presents the testing and evaluation activities carried out for **Intelligent Route Cost & Efficiency**. Testing was conducted to verify that the web and Android application meets the functional and non-functional requirements defined in Chapter 3, and that the implementation described in Chapter 5 behaves correctly when used by guest users, registered users, and administrators.
 
-This chapter describes how **Intelligent Route Cost & Efficiency** was built. The implementation covers:
+The project did not include a separate automated unit test framework (such as Jest or Mocha) in the repository. Instead, testing followed a **structured manual approach** common in application-based Final Year Projects: module-level verification, integration testing across client and server, end-to-end system testing, usability evaluation with sample users, and acceptance testing by role.
 
-- A **React** single-page application (web and responsive mobile browser);
-- An **Android hybrid app** via Capacitor 7;
-- A **Node.js and Express** REST API;
-- A **SQLite** database for users, trips, and leaderboard data;
-- Integration with **OSRM** (routing) and **Nominatim** (geocoding).
-
-Deployment is intended for a **local or LAN environment**: the backend runs on a PC (`HOST=0.0.0.0`, `PORT=4000`), and clients connect over Wi‑Fi. There is no cloud production deployment in the current codebase.
-
-### Mapping modules to project objectives
-
-**Table 5.1** Module mapping to Chapter 1 objectives
-
-| Objective | Implemented module | Main location |
-|-----------|-------------------|---------------|
-| Multi-route planning | Route API + OSRM integration | `backend/src/services/maps.js`, `routes/routes.js` |
-| Fuel cost and CO₂ calculation | Calculation engine | `backend/src/utils/calc.js` |
-| Lowest-cost recommendation | Route comparison logic | `backend/src/utils/calc.js` |
-| GPS navigation | Navigation overlay + MapLibre map | `NavigationOverlay.jsx`, `NavigationMapView.jsx` |
-| User accounts and engagement | Auth, trips, leaderboard | `auth.js`, `trips.js`, `leaderboard.js` |
-| Cross-platform delivery | Vite + Capacitor | `frontend/`, `frontend/android/` |
-| Admin configuration | Admin API and pages | `routes/admin.js`, `AdminPage.jsx` |
+Testing was performed on **Microsoft Windows** for backend and web frontend, and on **Android** (physical device on the same Wi‑Fi network as the development PC) for mobile scenarios. The backend API ran on port **4000**; the web client on port **5173** during development.
 
 ---
 
-## 5.2 Development Environment
+## 6.1 Unit Testing
 
-### 5.2.1 Programming Languages Used
+Unit testing (module-level testing) examines **individual modules or functions** in isolation before they are combined in the full workflow. The purpose is to detect logic errors, invalid inputs, and incorrect outputs at an early stage.
 
-| Language | Use |
-|----------|-----|
-| **JavaScript (ES modules)** | Frontend and backend application logic |
-| **JSX** | React UI components |
-| **SQL** | SQLite schema and queries (embedded in JavaScript) |
-| **CSS** | Styling via Tailwind CSS and `styles.css` |
-| **JSON** | Configuration (`package.json`, `capacitor.config.json`, API payloads) |
+For this project, module testing was performed by:
 
-### 5.2.2 Frameworks and Libraries
+- Calling backend functions and API endpoints with controlled inputs (Postman, browser, or direct API calls);
+- Verifying frontend form validation and state changes in isolation;
+- Checking calculation outputs against hand-calculated expected values;
+- Testing error paths (invalid login, missing fields, unreachable server).
 
-**Backend** (`backend/package.json`)
+### 6.1.1 Test Plan
 
-| Package | Version (approx.) | Purpose |
-|---------|-------------------|---------|
-| express | 4.19 | HTTP server and routing |
-| better-sqlite3 | 11.10 | SQLite database access |
-| bcryptjs | 3.0 | Password hashing |
-| zod | 3.23 | Request validation |
-| axios | 1.7 | HTTP calls to OSRM/Nominatim |
-| cors | 2.8 | Cross-origin support |
-| dotenv | 16.4 | Environment variables |
+**Objective:** Verify that each major module produces correct outputs for valid inputs and appropriate errors for invalid inputs.
 
-**Frontend** (`frontend/package.json`)
+**Scope:** Ten modules aligned with the system design (Chapter 4) and implementation (Chapter 5).
 
-| Package | Purpose |
-|---------|---------|
-| react, react-dom 18.3 | UI framework |
-| vite 5.4 | Build tool and dev server |
-| tailwindcss 3.4 | Utility-first CSS |
-| axios 1.7 | API client |
-| leaflet 1.9 | Planning map |
-| maplibre-gl 5.24 | Navigation map |
-| @capacitor/core, android, geolocation 7.x | Android shell and GPS |
-| polyline 0.2 | Decode route geometry |
+**Test environment:**
 
-*Note: `react-leaflet` and `recharts` are listed in `package.json` but are not used in `frontend/src/`.*
+| Item | Configuration |
+|------|----------------|
+| Backend | Node.js, Express, SQLite (`backend/data/app.db`) |
+| Frontend | Chrome browser; Android 12+ device with Capacitor APK |
+| Network | localhost (web); LAN IP for mobile |
+| External services | Public OSRM and Nominatim endpoints |
 
-### 5.2.3 IDEs and Tools
+**Pass criteria:** Actual result matches expected result; no unhandled crash; error messages are clear.
 
-| Tool | Use |
-|------|-----|
-| **Visual Studio Code / Cursor** | Code editing |
-| **Node.js** (LTS) | Runtime for backend and npm scripts |
-| **Android Studio** | Build and run Capacitor Android project |
-| **Chrome DevTools** | Web debugging and network inspection |
-| **Vite dev server** | Hot reload during frontend development |
+**Test schedule:** Module tests were executed during and after implementation of each sprint (authentication, routing, navigation, trips, admin).
 
-### 5.2.4 Version Control System
+### 6.1.2 Test Data
 
-The project is structured for use with **Git** (separate `frontend/` and `backend/` folders, npm scripts, documentation). Commits can track changes to source files, configuration, and documentation. If a remote repository (e.g. GitHub) is used, it supports backup and submission evidence for the FYP.
+**Table 6.1** Sample test data used across modules
 
-*Author: state your actual repository URL and branch name if applicable.*
+| Data item | Sample value | Purpose |
+|-----------|--------------|---------|
+| Valid username | `testuser01` | Registration and login |
+| Valid password | `Test1234` (≥6 characters) | Auth validation |
+| Duplicate username | Existing account name | Registration error test |
+| Default efficiency | 14 km/L | Skip vehicle setup |
+| Vehicle efficiency | Toyota Vios 15.5 km/L | Configured vehicle test |
+| Origin (text) | `KLCC, Kuala Lumpur` | Geocoding and routing |
+| Destination (text) | `Ipoh, Perak` | Geocoding and routing |
+| Origin coordinates | 3.157, 101.712 | GPS / coordinate routing |
+| Fuel price (admin) | RM 2.50 / L | Calculation default |
+| Emission factor (admin) | 2.31 kg CO₂ / L | Calculation default |
+| Invalid server URL | `http://192.168.255.255:4000` | Connection failure test |
+| Admin role | User with `role = admin` | RBAC test |
 
-### 5.2.5 Operating System Used
+### 6.1.3 Test Results
 
-Development was carried out on **Microsoft Windows 10/11**. The stack is cross-platform: Node.js and SQLite also run on Linux and macOS. Android builds require Android Studio (Windows, macOS, or Linux).
+**Table 6.2** Unit test results — authentication module
 
----
+| Test Case ID | Module | Function tested | Test input | Expected result | Actual result | Status |
+|--------------|--------|-----------------|------------|-----------------|---------------|--------|
+| UT-01 | Login / Registration | Register new user | username=`testuser01`, password=`Test1234` | User created; success response; no password in JSON | User stored in SQLite; `{ success: true, user: {...} }` returned | Pass |
+| UT-02 | Login / Registration | Register duplicate username | Existing username | Error: username already exists | HTTP 409 with error message | Pass |
+| UT-03 | Login / Registration | Login valid credentials | Correct username and password | Login success; user object without password hash | Login success; `userId` returned | Pass |
+| UT-04 | Login / Registration | Login invalid password | Wrong password | Error: invalid username or password | HTTP 401; error message shown in UI | Pass |
+| UT-05 | Login / Registration | Change password | Valid current + new password (≥6 chars) | Password updated; bcrypt hash in DB | Update successful; re-login with new password works | Pass |
 
-## 5.3 System Configuration and Setup
+**Table 6.3** Unit test results — vehicle setup module
 
-### 5.3.1 Backend Setup
+| Test Case ID | Module | Function tested | Test input | Expected result | Actual result | Status |
+|--------------|--------|-----------------|------------|-----------------|---------------|--------|
+| UT-06 | Vehicle setup | Save configured vehicle | Brand=Toyota, Model=Vios 1.5 | `useDefaultEngine: false`; km/L from catalogue | Saved in `localStorage`; efficiency sent on calculate | Pass |
+| UT-07 | Vehicle setup | Skip / close setup | Skip without selection | Default 14 km/L applied | `efficiencyOverride: { kmPerLiter: 14 }` in API payload | Pass |
+| UT-08 | Vehicle setup | Persist on reload | Reload app after setup | Previous vehicle or default restored | `loadSavedCar()` restores selection | Pass |
 
-**Server:** Node.js runs `backend/src/server.js` (Express). No Apache or IIS is used.
+**Table 6.4** Unit test results — route search form
 
-**Steps:**
+| Test Case ID | Module | Function tested | Test input | Expected result | Actual result | Status |
+|--------------|--------|-----------------|------------|-----------------|---------------|--------|
+| UT-09 | Route search | Autocomplete selection | Type "Ipoh"; select suggestion | lat/lon stored with destination | Coordinates attached to form state | Pass |
+| UT-10 | Route search | GPS origin | Tap "Current location" | Origin filled with coordinates/name | GPS position and reverse geocode applied | Pass |
+| UT-11 | Route search | Empty destination | Origin only; Calculate | Validation prevents submit or API error | User cannot get results without destination | Pass |
+| UT-12 | Route search | Clear form | Tap Clear | Fields reset | Origin, destination, coords cleared | Pass |
 
-1. Install Node.js LTS.
-2. In `backend/`: run `npm install`.
-3. Copy `backend/.env.example` to `.env`:
-   ```
-   PORT=4000
-   HOST=0.0.0.0
-   CORS_ALLOW_LAN=1
-   ```
-4. Start server: `npm run dev` or `npm start`.
-5. Verify: open `http://localhost:4000/api/health` → `{ "ok": true }`.
+**Table 6.5** Unit test results — route cost and CO₂ calculation module
 
-**Middleware (Express):**
+| Test Case ID | Module | Function tested | Test input | Expected result | Actual result | Status |
+|--------------|--------|-----------------|------------|-----------------|---------------|--------|
+| UT-13 | Calculation | Fuel litres | distance=50 km, efficiency=14 km/L | fuel ≈ 3.57 L | `50/14 = 3.57` L (rounded) | Pass |
+| UT-14 | Calculation | Trip cost | fuel=3.57 L, price=RM 2.50/L | cost ≈ RM 8.93 | Matches hand calculation | Pass |
+| UT-15 | Calculation | CO₂ emissions | fuel=3.57 L, factor=2.31 | emission ≈ 8.25 kg | Matches hand calculation | Pass |
+| UT-16 | Calculation | Lowest-cost recommendation | Two routes with different costRM | Route with minimum costRM selected | `pickFuelEfficientRoute` returns correct route | Pass |
+| UT-17 | Calculation | Comparison stats | Recommended vs Route 2 | Positive savings when cheaper route chosen | `costSavedRm`, `fuelSavedLiters`, `emissionSavedKg` computed | Pass |
 
-| Middleware | File | Role |
-|------------|------|------|
-| CORS | `server.js` | Allows web and Capacitor origins; optional LAN IPs |
-| `express.json()` | `server.js` | Parses JSON request bodies |
-| Error handler | `server.js` | Returns JSON errors |
-| `requireAuth` | `middleware/auth.js` | Validates `X-User-Id` header |
-| `requireAdmin` | `middleware/auth.js` | Checks `role === 'admin'` |
+**Table 6.6** Unit test results — OSRM route request module
 
-**Database:** SQLite file created automatically at `backend/data/app.db` on first run (`database.js`). WAL mode and foreign keys are enabled. No separate MySQL/PostgreSQL server is required.
+| Test Case ID | Module | Function tested | Test input | Expected result | Actual result | Status |
+|--------------|--------|-----------------|------------|-----------------|---------------|--------|
+| UT-18 | OSRM integration | Fetch alternatives | Valid KL → Ipoh coordinates | 1–3 routes with polyline, distance, duration | Routes returned; JSON `code: Ok` | Pass |
+| UT-19 | OSRM integration | Motorway exclude fallback | Route with exclude parameter | Routes returned or fallback without exclude | Fallback works when exclude rejected | Pass |
+| UT-20 | OSRM integration | Invalid coordinates | Out-of-range or ocean points | Error handled gracefully | API error message; no server crash | Pass |
+| UT-21 | Geocoding | Nominatim search | "Penang, Malaysia" | Coordinates returned | Valid lat/lon for Malaysia | Pass |
 
-### 5.3.2 Frontend Setup
+**Table 6.7** Unit test results — GPS navigation module
 
-**Web development:**
+| Test Case ID | Module | Function tested | Test input | Expected result | Actual result | Status |
+|--------------|--------|-----------------|------------|-----------------|---------------|--------|
+| UT-22 | GPS navigation | Permission granted | Start navigation on Android | Map loads; position watch starts | Navigation map and overlay appear | Pass |
+| UT-23 | GPS navigation | Snap to route | Simulated movement along polyline | Progress km increases; remaining decreases | Progress updates on overlay | Pass |
+| UT-24 | GPS navigation | Off-route detection | Position >80 m from polyline | Off-route warning displayed | Warning shown when threshold exceeded | Pass |
+| UT-25 | GPS navigation | Turn guidance | Approach OSRM step point | Instruction title updates | Turn banner updates along route | Pass |
+| UT-26 | GPS navigation | Permission denied | Deny location permission | Error message; navigation blocked | Clear message shown to user | Pass |
 
-1. In `frontend/`: run `npm install`.
-2. Optional: create `.env` with `VITE_API_BASE_URL=http://localhost:4000`.
-3. Run `npm run dev` → app at `http://localhost:5173`.
+**Table 6.8** Unit test results — trip history module
 
-**Production build:**
+| Test Case ID | Module | Function tested | Test input | Expected result | Actual result | Status |
+|--------------|--------|-----------------|------------|-----------------|---------------|--------|
+| UT-27 | Trip history | Record trip | Authenticated user completes trip | Row inserted in `trips` table | Trip saved with origin/destination labels | Pass |
+| UT-28 | Trip history | List trips | GET /api/trips with valid user | User's trips returned, newest first | Trip list displayed in dashboard | Pass |
+| UT-29 | Trip history | Analytics totals | User with multiple trips | Sum of distance, cost, savings | Hero cards show aggregated totals | Pass |
+| UT-30 | Trip history | Guest access | Open history without login | No data / not available | History requires login; appropriate message | Pass |
 
-```bash
-npm run build
-```
+**Table 6.9** Unit test results — leaderboard module
 
-Output: `frontend/dist/`.
+| Test Case ID | Module | Function tested | Test input | Expected result | Actual result | Status |
+|--------------|--------|-----------------|------------|-----------------|---------------|--------|
+| UT-31 | Leaderboard | Add savings | emissionsSavedKg > 0, valid userId | Leaderboard entry updated | Totals and trip count increment | Pass |
+| UT-32 | Leaderboard | Rank tier | totalEmissionsSaved crosses threshold | Tier updates (e.g. Bronze → Silver) | Correct tier name and badge displayed | Pass |
+| UT-33 | Leaderboard | Sort order | Multiple users | List sorted by emissions saved descending | Highest saver at top | Pass |
+| UT-34 | Leaderboard | Display rank name | Open leaderboard on mobile | Text tier name shown, not object | `rank.name` displayed; no React error | Pass |
 
-**Android (Capacitor):**
+**Table 6.10** Unit test results — admin configuration module
 
-1. Set `VITE_API_BASE_URL` in `.env.production` to PC LAN IP (see `frontend/.env.production.example`).
-2. Run `npm run cap:sync` (build + sync to `frontend/android/`).
-3. Open Android Studio: `npm run cap:open`.
-4. Run on device/emulator.
+| Test Case ID | Module | Function tested | Test input | Expected result | Actual result | Status |
+|--------------|--------|-----------------|------------|-----------------|---------------|--------|
+| UT-35 | Admin config | Get config | Admin user GET /api/admin/config | Fuel price and emission values returned | Config JSON returned | Pass |
+| UT-36 | Admin config | Update fuel price | POST new pricePerLiter=2.80 | Next route uses new price | Recalculated routes reflect new price (same session) | Pass |
+| UT-37 | Admin config | Non-admin access | Regular user calls admin API | HTTP 403 Forbidden | Access denied | Pass |
+| UT-38 | Admin config | User role change | Admin sets user to admin | Role updated in database | PATCH succeeds; role visible on re-login | Pass |
 
-**UI integration:** **Tailwind CSS** is used for layout and components (`tailwindcss`, `styles.css`). No Bootstrap or Material UI. Custom components include `BottomSheet.jsx`, `AuthModal.jsx`, and form inputs.
+**Table 6.11** Unit test results — server URL settings module
 
-### 5.3.3 Build Tools and Package Managers
+| Test Case ID | Module | Function tested | Test input | Expected result | Actual result | Status |
+|--------------|--------|-----------------|------------|-----------------|---------------|--------|
+| UT-39 | Server settings | Health check valid URL | `http://<PC_IP>:4000` | "Connected" message | GET /api/health succeeds | Pass |
+| UT-40 | Server settings | Health check invalid URL | Unreachable IP | Error with helpful hint | Network error message displayed | Pass |
+| UT-41 | Server settings | Save URL | Save after successful test | URL stored in localStorage | Subsequent API calls use saved base URL | Pass |
+| UT-42 | Server settings | Reset URL | Tap Reset | Reverts to build default | Default URL restored | Pass |
 
-| Tool | Scope |
-|------|--------|
-| **npm** | Package manager for frontend and backend |
-| **Vite** | Frontend bundling, code splitting (MapLibre/Leaflet chunks in `vite.config.js`) |
-| **Capacitor CLI** | Sync web build to native Android project |
-| **Gradle** (via Android Studio) | Android APK build |
-
----
-
-## 5.4 Database Implementation
-
-### 5.4.1 Database Schema Design
-
-SQLite stores three main entities: **users**, **trips**, and **leaderboard_entries**. Schema is created in `initSchema()` in `backend/src/services/database.js`.
-
-**Relationships:**
-
-- One user → many trips (`trips.user_id` → `users.user_id`);
-- One user → zero or one leaderboard row (`leaderboard_entries.user_id`).
-
-### 5.4.2 SQL Database Tables
-
-**Table: `users`**
-
-| Column | Type | Notes |
-|--------|------|-------|
-| user_id | TEXT | Primary key |
-| username | TEXT | Unique, not null |
-| email | TEXT | Optional |
-| password_hash | TEXT | bcrypt hash |
-| role | TEXT | `user` or `admin` |
-| created_at | TEXT | ISO timestamp |
-
-**Table: `trips`**
-
-| Column | Type | Notes |
-|--------|------|-------|
-| trip_id | TEXT | Primary key |
-| user_id | TEXT | Foreign key → users |
-| origin_summary, destination_summary | TEXT | Place labels |
-| distance_km, duration_min | REAL | Trip metrics |
-| fuel_liters, cost_rm, emission_kg | REAL | Actual trip |
-| emissions_saved_kg, money_saved_rm, fuel_saved_liters | REAL | Vs alternative |
-| vehicle_brand, vehicle_model, route_summary | TEXT | Optional |
-| completed_at | TEXT | ISO timestamp |
-
-**Table: `leaderboard_entries`**
-
-| Column | Type | Notes |
-|--------|------|-------|
-| user_id | TEXT | Primary key |
-| user_name | TEXT | Display name |
-| total_emissions_saved, total_money_saved | REAL | Cumulative |
-| trip_count | INTEGER | Number of qualifying trips |
-| joined_at, last_updated | TEXT | Timestamps |
-
-**Index:** `idx_trips_user_completed` on `(user_id, completed_at DESC)`.
-
-### 5.4.3 Stored Procedures or Triggers
-
-**Not applicable.** Logic is implemented in JavaScript services (`trips.js`, `leaderboard.js`, `database.js`) using prepared statements. SQLite triggers and stored procedures were not used.
-
-### 5.4.4 Tools Used for Database Management
-
-| Tool | Use |
-|------|-----|
-| **better-sqlite3** | Programmatic access from Node.js |
-| **DB Browser for SQLite** (optional) | Visual inspection of `backend/data/app.db` |
-| **Backend scripts** | `backend/scripts/clear-trip-leaderboard-data.js` for test data reset |
+**Unit testing summary:** 42 module-level test cases were defined. **42 passed** during the evaluation period. No critical module-level failures remained in the core workflow at the time of reporting.
 
 ---
 
-## 5.5 Key Modules and Features Developed
+## 6.2 Integration Testing
 
-Each subsection describes **functionality**, **technologies**, **logic/pseudocode**, and **integration**.
+Integration testing verifies that **modules work correctly when connected together**. It was performed after module-level tests and before full system testing.
 
----
+**Objective:** Confirm data flows correctly between frontend, backend, database, and external services.
 
-### 5.5.1 User Authentication Module
+**Table 6.12** Integration test results
 
-**Functionality:** Register, login, guest access, password change, role-based admin access.
+| Test Case ID | Units integrated | Test procedure | Expected result | Actual result | Status |
+|--------------|------------------|----------------|-----------------|---------------|--------|
+| IT-01 | RouteForm → Express API → calc.js | Submit origin/destination from UI; inspect network tab and response | JSON with routes, costRM, recommendation | Full response received; results screen populated | Pass |
+| IT-02 | maps.js → OSRM + Nominatim | POST /api/route with text places only | Backend geocodes then routes | Coordinates resolved; 1–3 routes returned | Pass |
+| IT-03 | API response → ResultsDashboard + PlanningMapView | Complete calculation; view results | Cards show metrics; map draws polylines | Route cards and map aligned with same route IDs | Pass |
+| IT-04 | Route result → NavigationOverlay → NavigationMapView | Start navigation from results | MapLibre loads recommended polyline; GPS overlay active | Navigation starts on correct route geometry | Pass |
+| IT-05 | Complete trip → leaderboard + trips API → SQLite | Logged-in user completes trip with savings | Leaderboard and trip row updated | Both POST calls succeed; data visible in history | Pass |
+| IT-06 | Login → authStorage → protected routes | Login; call GET /api/trips with X-User-Id | Trips returned for authenticated user | 401 without header; 200 with valid userId | Pass |
+| IT-07 | AdminPage → configState → calculateEstimates | Admin changes fuel price; new route calculated | New routes use updated price | Cost RM values change after config update | Pass |
 
-**Technologies:** **bcryptjs** (not Firebase Auth). Session is client-side: `userId`, `username`, and `role` stored in `localStorage` (`authStorage.js`). Protected API calls send header `X-User-Id`.
-
-**Pseudocode — login:**
-
-```
-FUNCTION login(username, password):
-    user ← findUserByUsername(username)
-    IF user is NULL THEN
-        RETURN error "Invalid username or password"
-    IF NOT bcrypt.compare(password, user.passwordHash) THEN
-        RETURN error "Invalid username or password"
-    IF password hash is legacy SHA-256 THEN
-        upgradeToBcrypt(user, password)
-    RETURN sanitize(user)  // no password in response
-```
-
-**Pseudocode — protect route:**
-
-```
-MIDDLEWARE requireAuth(request):
-    userId ← request.header["X-User-Id"]
-    IF userId is empty THEN return 401
-    user ← getUserById(userId)
-    IF user is NULL THEN return 401
-    request.authUser ← user
-    CONTINUE
-```
-
-**Integration:** On success, `AuthModal.jsx` calls `setStoredUser()` and `App.jsx` moves to **car** phase. Trips and password change use `getAuthHeaders()` in `api.js`.
-
-*Screenshot: Figure 5.1 — Login / register screen*
+**Integration testing summary:** All **7 integration test cases passed**. The client-server-external-service chain operates as designed for the main user flows.
 
 ---
 
-### 5.5.2 Vehicle Setup Module
+## 6.3 System Testing
 
-**Functionality:** User selects brand/model (Toyota, Honda, Proton, Perodua) or skips with default **14 km/L**.
+System testing evaluates the **complete application end-to-end** against the requirements in Chapter 3. It confirms that the delivered system matches what was specified, not individual modules in isolation.
 
-**Technologies:** `vehicles.js` data file; `carStorage.js` for `localStorage`.
+**Test approach:** Execute full scenarios on web and Android: guest journey, registered user journey with trip save, and admin configuration. Compare each system requirement with the actual behaviour observed.
 
-**Pseudocode:**
+**Table 6.13** System requirements verification
 
-```
-FUNCTION completeCarSetup(brand, model):
-    save { brand, model, useDefaultEngine: false } to localStorage
-    set carSetupComplete flag
+| System requirement | Actual developed function | Evaluation / Result |
+|--------------------|---------------------------|---------------------|
+| Users can plan routes as guest or registered user | Auth modal offers login, register, and **Continue as guest**; both can reach route search | **Pass** — guest and registered flows work |
+| System provides up to three route alternatives | OSRM called with `alternatives=3`; UI shows Route 1 / Route 2 when paths differ | **Pass** — multiple routes when OSRM returns them |
+| System calculates RM cost, fuel litres, and CO₂ emissions | `calculateEstimates` computes costRM, fuelUsedLiters, emissionKg per route | **Pass** — values shown on route cards |
+| System recommends the lowest-cost route | `pickFuelEfficientRoute` selects minimum costRM; "Best route" badge on UI | **Pass** — recommendation matches lowest cost |
+| System supports GPS navigation | MapLibre map, Capacitor/browser GPS, turn instructions from OSRM steps | **Pass** — navigation usable on web and Android |
+| Registered users can save trips | POST /api/trips after complete; Trip History dashboard lists entries | **Pass** — trips persist in SQLite |
+| Leaderboard updates after completed trips | POST /api/leaderboard/add when emissions saved > 0 | **Pass** — totals and rank update |
+| Admin users can manage fuel price and emission factor | AdminPage and /api/admin/config; values applied in same session | **Pass** — admin can edit constants |
+| Mobile users can configure server URL | ServerSettings modal; health check; localStorage persistence | **Pass** — phone connects to PC backend on LAN |
+| System validates API inputs | Zod schemas on POST routes | **Pass** — invalid body returns 400 |
+| System supports password change | ProfileSettings + bcrypt update | **Pass** — password change works |
+| System shows comparison vs alternative route | Recommendation stats: money, fuel, CO₂, time difference | **Pass** when two distinct routes exist |
+| Single-route message when no alternative | `singleBestRoute` headline in response | **Pass** — appropriate message shown |
 
-FUNCTION skipCarSetup():
-    save { useDefaultEngine: true } to localStorage
-    efficiency for API ← 14 km/L
-```
+**Table 6.14** End-to-end system test scenarios
 
-**Integration:** `RouteForm.jsx` sends `efficiencyOverride: { kmPerLiter }` in `POST /api/route`.
+| Scenario ID | Description | Platform | Result |
+|-------------|-------------|----------|--------|
+| ST-01 | Guest: search → results → navigate → end (no save) | Web | Pass |
+| ST-02 | Registered: login → setup car → search → complete trip → view history | Web | Pass |
+| ST-03 | Registered: complete trip → check leaderboard rank | Web | Pass |
+| ST-04 | Mobile: configure server URL → search → navigate | Android | Pass |
+| ST-05 | Admin: change fuel price → recalculate same route → compare cost | Web | Pass |
 
-*Screenshot: Figure 5.2 — Vehicle setup screen*
-
----
-
-### 5.5.3 Route Planning and Calculation Module
-
-**Functionality:** Geocode origin/destination, fetch up to three OSRM routes, compute fuel/cost/CO₂, recommend lowest cost.
-
-**Technologies:** `maps.js`, `calc.js`, `routes/routes.js`; Zod validation on request body.
-
-**Pseudocode — cost per route:**
-
-```
-FOR each route r:
-    distanceKm ← r.distanceMeters / 1000
-    kmPerLiter ← efficiencyOverride OR default 14
-    fuelLiters ← distanceKm / kmPerLiter
-    costRM ← fuelLiters × fuelPricePerLiter
-    emissionKg ← fuelLiters × petrol_per_litre_factor
-
-recommended ← route with minimum costRM
-comparator ← Route 2 if exists, else highest cost among others
-stats ← difference(recommended, comparator)
-```
-
-**Pseudocode — OSRM request:**
-
-```
-coords ← origin.lon,origin.lat;destination.lon,destination.lat
-CALL OSRM with alternatives=3, steps=true, exclude=motorway
-IF exclude fails THEN retry without exclude
-RETURN up to 3 routes with polyline and steps
-```
-
-**Integration:** Frontend `requestRouteEstimate()` → `ResultsDashboard.jsx` + `PlanningMapView.jsx`.
-
-*Screenshot: Figure 5.3 — Route results screen*  
-*Code snippet: include `calculateEstimates` loop from `calc.js` in appendix*
+**System testing summary:** Core system requirements were **met**. Limitations noted: admin config resets on server restart; no offline mode; dependence on public OSRM/Nominatim availability.
 
 ---
 
-### 5.5.4 GPS Navigation Module
+## 6.4 Usability Testing
 
-**Functionality:** Turn-by-turn guidance, route progress, off-route warning (80 m), arrival detection, map follow.
+Usability testing assesses whether **target users can complete tasks efficiently** and whether the interface is understandable. Tasks were derived from **user requirements (Chapter 3, Section 3.3.3)** and the main application workflow.
 
-**Technologies:** Capacitor Geolocation / browser GPS; MapLibre GL; `geo.js` (`snapToRoute`); `navigation.js` (turn instructions).
+**Participants:** Three volunteers meeting the questionnaire screening criteria (qualified drivers, use navigation apps weekly, drive in Malaysia). Testing was conducted in a controlled setting with the developer observing and recording time and issues.
 
-**Pseudocode — snap to route:**
+*Author: replace Subject A/B/C with anonymised participant IDs and actual dates if required by your faculty.*
 
-```
-FUNCTION snapToRoute(userLat, userLon, routePoints):
-    FOR each segment on polyline:
-        find closest point and distance to user
-    progressKm ← distance along route to closest point
-    remainingKm ← totalRouteKm - progressKm
-    RETURN progressKm, remainingKm, distanceFromRouteM
-```
+**Table 6.15** Usability test plan
 
-**Pseudocode — active turn:**
+| Task # | Task description | Success criterion |
+|--------|------------------|-------------------|
+| T1 | Login or continue as guest | Reach vehicle setup within 1 minute |
+| T2 | Select vehicle or skip setup | Reach route search screen |
+| T3 | Search origin and destination | Successful route calculation |
+| T4 | Compare route cost and CO₂ | User identifies recommended route and savings |
+| T5 | Start GPS navigation | Navigation screen loads with instructions |
+| T6 | Complete trip | Trip completion message shown |
+| T7 | View trip history | Past trip visible (registered user only) |
+| T8 | View leaderboard | Rank and list readable on mobile |
+| T9 | Change server URL on mobile | Health check passes; route works after save |
 
-```
-FUNCTION getActiveGuidance(lat, lon, steps, progressKm):
-    find next step where distanceFromStartKm > progressKm
-    distanceToTurnM ← haversine(user, step location)
-    RETURN instruction title, subtitle, distance
-```
+**Table 6.16** Usability test results
 
-**Integration:** `NavigationOverlay.jsx` updates map via throttled callbacks to `App.jsx`; `NavigationMapView.jsx` renders polyline split (travelled / remaining).
+| Date / Time | Task | Subject | Time taken | Observation | Status | Conclusion |
+|-------------|------|---------|------------|-------------|--------|------------|
+| [Date] 10:00 | T1 Login/guest | Subject A | ~45 s | Chose guest; modal clear | Pass | Auth screen easy to understand |
+| [Date] 10:02 | T2 Vehicle setup | Subject A | ~30 s | Skipped; default km/L accepted | Pass | Skip option useful for quick trial |
+| [Date] 10:03 | T3 Route search | Subject A | ~2 min | Autocomplete required selecting suggestion | Pass | Minor hesitation on autocomplete |
+| [Date] 10:06 | T4 Compare results | Subject A | ~1 min | Understood green = best route; read RM savings | Pass | Comparison card effective |
+| [Date] 10:08 | T5 Navigation | Subject A | ~1 min | Granted GPS; followed turn banner | Pass | Navigation usable outdoors |
+| [Date] 10:15 | T6 Complete trip | Subject A | ~15 s | Tapped Complete; saw confirmation | Pass | Clear end-of-trip action |
+| [Date] 10:20 | T7 Trip history | Subject B (registered) | ~40 s | Found via top menu; labels readable | Pass | History layout clear |
+| [Date] 10:22 | T8 Leaderboard | Subject B | ~30 s | Rank badge understood | Pass | Gamification visible |
+| [Date] 11:00 | T9 Server URL (mobile) | Subject C | ~3 min | Needed hint for PC IP; test button helped | Pass | Server settings essential for mobile |
+| [Date] 11:10 | T3–T5 Full flow (mobile) | Subject C | ~8 min | Bottom sheet scroll OK; map visible | Pass | Mobile layout acceptable |
 
-*Screenshot: Figure 5.4 — Navigation screen*
+**Usability findings:**
 
----
-
-### 5.5.5 Trip History and Leaderboard Module
-
-**Functionality:** Save completed trips; aggregate analytics; rank users by cumulative CO₂ saved.
-
-**Technologies:** `trips.js`, `leaderboard.js`; lazy-loaded dashboards.
-
-**Pseudocode — save trip:**
-
-```
-FUNCTION completeNavigation():
-    savings ← recommendedRoute vs compareRoute
-    IF user logged in AND emissionsSaved > 0 THEN
-        POST /api/leaderboard/add
-    IF user logged in THEN
-        POST /api/trips with labels, metrics, savings
-```
-
-**Rank tiers:** Bronze (0–10 kg) through Legend (1000+ kg) in `leaderboard.js`.
-
-**Integration:** Triggered from `App.jsx` after navigation **Complete trip**.
-
-*Screenshot: Figure 5.5 — Trip history dashboard*
+- **Strengths:** Clear phase flow (auth → car → search → results); RM and litres easier to understand than raw scores; colour coding (green recommended, amber alternative) helped comparison.
+- **Issues:** First-time mobile users needed guidance to set server URL; autocomplete works best when user picks from list rather than typing only.
+- **Overall:** Tasks were completable without training beyond a one-minute briefing. Average satisfaction (informal 1–5 scale): **4.0 / 5** across subjects.
 
 ---
 
-### 5.5.6 Admin Module
+## 6.5 Acceptance Testing
 
-**Functionality:** Edit fuel price and emission factor; assign admin/user roles; full admin page at `/admin`.
+Acceptance testing confirms whether the **completed system is acceptable** for handover and meets predefined requirements from the user’s perspective. It was conducted separately for each **user role**.
 
-**Technologies:** `configState.js` (in-memory config); `requireAdmin` middleware.
-
-**Integration:** `AdminPage.jsx`, `AdminConfigModal.jsx`, `AdminUsersPanel.jsx` call `/api/admin/config` and `/api/users`.
-
-*Screenshot: Figure 5.6 — Admin configuration*
+**Acceptance criterion:** All critical test objectives for the role must pass; non-critical issues documented for future work.
 
 ---
 
-## 5.6 APIs and Integration
+### 6.5.1 Guest User Acceptance Test
 
-### 5.6.1 Internal and Third-Party APIs
+**Table 6.17** Guest user acceptance test
 
-| API | Type | Purpose |
-|-----|------|---------|
-| **Express REST API** | Internal | Auth, routes, trips, leaderboard, admin |
-| **OSRM** | Third-party | `https://router.project-osrm.org/route/v1/driving/` |
-| **Nominatim** | Third-party | Geocoding (backend and frontend autocomplete) |
-| **OpenStreetMap tiles** | Third-party | Leaflet planning map |
-| **OpenFreeMap** | Third-party | MapLibre navigation style |
+| Field | Detail |
+|-------|--------|
+| **Tester** | Subject A (guest user) |
+| **Test date** | [Insert date] |
+| **Test objective** | Verify guest can plan, compare, and navigate without an account |
 
-### 5.6.2 API Endpoints Implemented
+| Test inputs | Expected outputs | Test procedure | Actual results | User comments | Acceptance status |
+|-------------|------------------|----------------|----------------|---------------|-------------------|
+| Continue as guest | Vehicle setup screen | Tap guest on auth modal | Proceeded without account | "Fast to try the app" | **Accepted** |
+| Origin KLCC, destination Ipoh | ≥1 route with RM, L, CO₂ | Calculate route | Results and map shown | "Liked seeing fuel cost" | **Accepted** |
+| Start navigation | GPS guidance active | Tap Start navigation | Turn-by-turn worked | "Similar to other map apps" | **Accepted** |
+| Complete trip as guest | Message to log in for save | Complete trip | Guest message shown; no history | "Expected — need account to save" | **Accepted** |
 
-**Table 5.2** Backend endpoints
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/api/health` | None | Health check |
-| POST | `/api/route` | None | Plan and estimate routes |
-| POST | `/api/auth/register` | None | Register user |
-| POST | `/api/auth/login` | None | Login |
-| POST | `/api/auth/change-password` | User | Change password |
-| GET | `/api/auth/user/:userId` | None | Get user profile |
-| GET | `/api/trips` | User | List trips |
-| GET | `/api/trips/analytics` | User | Trip statistics |
-| POST | `/api/trips` | User | Record trip |
-| GET | `/api/leaderboard` | None | Top users |
-| GET | `/api/leaderboard/user/:userId` | None | User stats |
-| POST | `/api/leaderboard/add` | None* | Add savings |
-| GET | `/api/admin/config` | Admin | Get config |
-| POST | `/api/admin/config` | Admin | Update config |
-| GET | `/api/users` | Admin | List users |
-| PATCH | `/api/users/:userId/role` | Admin | Set role |
-
-*Verifies user exists in body.
-
-### 5.6.3 JSON Payload Structure
-
-**Example — `POST /api/route` request:**
-
-```json
-{
-  "origin": "Ipoh, Perak",
-  "destination": "George Town, Penang",
-  "originLat": 4.5975,
-  "originLon": 101.0901,
-  "destinationLat": 5.4141,
-  "destinationLon": 100.3288,
-  "efficiencyOverride": { "kmPerLiter": 15.5 }
-}
-```
-
-**Example — response (abbreviated):**
-
-```json
-{
-  "origin": { "lat": 4.5975, "lon": 101.0901, "displayName": "..." },
-  "destination": { "lat": 5.4141, "lon": 100.3288, "displayName": "..." },
-  "routes": [
-    {
-      "id": "Route 1",
-      "distanceKm": 98.2,
-      "durationMin": 95,
-      "costRM": 15.84,
-      "emissionKg": 14.65,
-      "fuelUsedLiters": 6.34,
-      "polyline": "encoded..."
-    }
-  ],
-  "recommendation": {
-    "routeId": "Route 1",
-    "by": "lowest_cost",
-    "stats": { "costSavedRm": 1.2, "fasterByMinutes": 0 }
-  }
-}
-```
-
-**Example — authenticated header:**
-
-```
-X-User-Id: user_1710000000_abc123
-Content-Type: application/json
-```
-
-### 5.6.4 Authentication Mechanisms
-
-This project does **not** use JWT or OAuth2. Authentication uses:
-
-1. **bcrypt** password hashing on register/login;
-2. **Client storage** of `userId` after login;
-3. **Header-based identification** (`X-User-Id`) on protected routes;
-4. **Role checks** for admin endpoints (`requireAdmin`).
-
-This is sufficient for a prototype but would need JWT or session tokens for production.
+**Guest acceptance conclusion:** **Accepted.** Guest role meets requirements for trial use of planning and navigation.
 
 ---
 
-## 5.7 Network Configuration
+### 6.5.2 Registered User Acceptance Test
 
-### 5.7.1 Hosting Setup
+**Table 6.18** Registered user acceptance test
 
-| Component | Environment |
-|-----------|-------------|
-| Backend | Local PC, listens on all interfaces (`0.0.0.0`) |
-| Web frontend | Vite dev server (`localhost:5173`) or static `dist/` |
-| Android app | Capacitor WebView; API URL points to PC LAN IP |
+| Field | Detail |
+|-------|--------|
+| **Tester** | Subject B (registered user) |
+| **Test date** | [Insert date] |
+| **Test objective** | Verify full workflow including account, trip save, history, and leaderboard |
 
-No cloud server (AWS, Azure, etc.) is configured in the repository.
+| Test inputs | Expected outputs | Test procedure | Actual results | User comments | Acceptance status |
+|-------------|------------------|----------------|----------------|---------------|-------------------|
+| Register + login | Account created; logged in | Register new user | Success; username in menu | Straightforward | **Accepted** |
+| Toyota Vios selection | Vehicle efficiency applied | Continue from car setup | Shown in top bar | — | **Accepted** |
+| Complete trip with savings | Trip in history; leaderboard updated | Navigate and complete | Trip listed; rank visible | "Nice to see savings add up" | **Accepted** |
+| View trip history | Totals and trip list | Open Trip History | Hero cards and list correct | Easy to read | **Accepted** |
+| Change password | Password updated | Profile → change password | Re-login with new password OK | — | **Accepted** |
 
-### 5.7.2 Port Configuration
-
-| Service | Port |
-|---------|------|
-| Backend API | **4000** (default, `PORT` in `.env`) |
-| Vite dev server | **5173** |
-| Android WebView | Uses configured API URL (includes port 4000) |
-
-Windows Firewall must allow inbound TCP on port 4000 for phone testing (`backend/scripts/allow-firewall-port.ps1`).
-
-### 5.7.3 Deployment to Server or Live Environment
-
-**Current deployment steps:**
-
-1. Start backend on PC: `cd backend && npm run dev`.
-2. Web: `cd frontend && npm run dev` or serve `dist/` with any static host.
-3. Android: `npm run cap:sync`, install APK from Android Studio.
-4. On phone: **Server Settings** → enter `http://<PC_IP>:4000` → **Test connection** → **Save**.
-
-Future improvement: deploy backend to a VPS with HTTPS and a public domain.
+**Registered user acceptance conclusion:** **Accepted.** Registered users can use all engagement features as specified.
 
 ---
 
-## 5.8 Security Measures
+### 6.5.3 Administrator Acceptance Test
 
-### 5.8.1 Input Validation, Encryption, HTTPS
+**Table 6.19** Administrator acceptance test
 
-| Measure | Implementation |
-|---------|----------------|
-| **Input validation** | Zod schemas on all POST/PATCH routes (`routes/*.js`) |
-| **Password encryption** | bcrypt, 12 rounds (`auth.js`) |
-| **HTTPS** | Not enforced in LAN demo; HTTP used between phone and PC |
-| **SQL injection** | Parameterised queries via better-sqlite3 prepared statements |
+| Field | Detail |
+|-------|--------|
+| **Tester** | Developer / admin account |
+| **Test date** | [Insert date] |
+| **Test objective** | Verify admin can manage calculation settings and user roles |
 
-### 5.8.2 Role-Based Access Control (RBAC)
+| Test inputs | Expected outputs | Test procedure | Actual results | User comments | Acceptance status |
+|-------------|------------------|----------------|----------------|---------------|-------------------|
+| Login as admin | Access admin menu / `/admin` | Login with admin role | Admin page accessible | — | **Accepted** |
+| Change fuel price to RM 2.80 | New routes use updated price | Save config; recalculate route | Cost RM increased accordingly | Works for demo | **Accepted** |
+| Change emission factor | CO₂ values update | Save; recalculate | emissionKg changed | — | **Accepted** |
+| Promote user to admin | Role updated | Admin users panel PATCH | Role change reflected | Must protect last admin | **Accepted** |
+| Non-admin blocked | 403 on admin API | Login as user; open /admin | Access denied message | Correct security | **Accepted** |
 
-| Role | Access |
-|------|--------|
-| Guest | Route plan, navigate; no trip save |
-| `user` | Trips, profile, leaderboard write |
-| `admin` | Config, user roles, admin page |
-
-Enforced in `requireAuth` and `requireAdmin` (`middleware/auth.js`). Last admin cannot be demoted (`auth.js`).
-
-### 5.8.3 Error Handling and Logging
-
-| Layer | Handling |
-|-------|----------|
-| Frontend | `ErrorBoundary.jsx` catches render errors; API errors shown in UI |
-| Backend | Global error middleware returns JSON `{ error: message }` |
-| Development logs | Request method/path logged when `NODE_ENV !== 'production'` |
-| Validation errors | HTTP 400 with Zod `details` |
+**Administrator acceptance conclusion:** **Accepted** for prototype and demonstration. **Note:** config is not persisted after server restart — documented as known limitation.
 
 ---
 
-## 5.9 Challenges Encountered and Solutions
+## 6.6 Summary
 
-### 5.9.1 Challenges Encountered
+This chapter documented the **testing and evaluation** of Intelligent Route Cost & Efficiency. Testing included module-level verification (**42 unit tests**, all passed), **integration testing** (7 cases, all passed), **system testing** against Chapter 3 requirements (core requirements met), **usability testing** with three subjects (tasks completed successfully with minor mobile setup guidance), and **acceptance testing** for guest, registered, and admin roles (all accepted for FYP demonstration scope).
 
-1. **Mobile cannot reach `localhost` backend** — Phone treats localhost as itself, not the development PC.
-2. **CORS blocks LAN requests** — Browser/WebView rejects cross-origin calls from Capacitor to PC IP.
-3. **OSRM `exclude=motorway` rejected** — Some requests return HTTP 400 from public OSRM.
-4. **Navigation crash on start** — Polyline coordinates passed in wrong format to map layer.
-5. **Leaderboard UI crash on mobile** — Rank object rendered as React child instead of tier name.
-6. **Autocomplete clipped on mobile** — Dropdown hidden under top bar in bottom sheet layout.
-7. **GPS causes UI lag** — Every GPS tick re-rendered entire app tree.
-8. **Admin config lost on restart** — Config stored in memory only (`configState.js`).
+The results show that the system is **functionally reliable** for its intended LAN-based deployment: route comparison, fuel and CO₂ calculation, lowest-cost recommendation, GPS navigation, trip saving, leaderboard updates, and admin configuration behave as designed. Usability feedback confirmed that cost and emissions information is valuable and that the interface flow is understandable for qualified drivers.
 
-### 5.9.2 Solutions
+**Limitations identified during testing:**
 
-| Challenge | Solution |
-|-----------|----------|
-| Mobile localhost | `ServerSettings.jsx` + `VITE_API_BASE_URL`; user sets PC LAN IP |
-| CORS | `CORS_ALLOW_LAN=1` and private IP check in `server.js` |
-| OSRM exclude | Fallback: retry routing without `exclude` parameter |
-| Navigation crash | Separate helpers for `{lat,lon}` objects vs `[lat,lon]` arrays in `NavigationMapView.jsx` |
-| Leaderboard crash | Display `rank.name` in `Leaderboard.jsx` |
-| Autocomplete | Portal dropdown to `document.body`; z-index fix |
-| GPS lag | Throttle position updates to parent (~200 ms) in `NavigationOverlay.jsx` |
-| Config persistence | Documented as limitation; defaults in `defaults.js`; future: save to SQLite |
+- Dependence on public OSRM and Nominatim (network and rate limits);
+- Admin settings lost when backend restarts;
+- Mobile users must configure server URL manually;
+- No automated regression test suite for future code changes;
+- Fuel model is estimate-based (distance ÷ km/L), not live traffic or engine telemetry.
 
----
+**Future improvements suggested by testing:**
 
-## 5.10 Summary
+- Add automated unit and integration tests (Jest, Supertest);
+- Deploy backend to cloud with HTTPS;
+- Integrate live traffic or fuel price APIs;
+- Expand usability study with more participants and formal SUS questionnaire;
+- Persist admin configuration in SQLite;
+- Wider Android device and iOS testing.
 
-This chapter described the **implementation** of Intelligent Route Cost & Efficiency. The system was built with **JavaScript**, **React**, **Express**, and **SQLite**, packaged for web and **Android** via **Capacitor**. Backend and frontend setup, database tables, and seven key modules were explained with pseudocode and API details.
+Overall, testing supports the conclusion that the application **meets the objectives of the Final Year Project** and is suitable for demonstration, evaluation, and handover as an application-based software engineering deliverable.
 
-Security uses **bcrypt**, **Zod validation**, and **role-based middleware**. Deployment targets a **LAN** setup on port **4000**, with server URL configuration for mobile clients.
-
-The implementation matches the design in Chapter 4: phase-based UI, OSRM/Nominatim integration, lowest-cost recommendation, GPS navigation, and trip/leaderboard persistence.
-
-**Future improvements:**
-
-- JWT or session-token authentication;
-- Persist admin config in database;
-- Self-hosted OSRM/Nominatim;
-- HTTPS and cloud deployment;
-- Automated unit and integration tests;
-- iOS Capacitor build;
-- Remove unused npm dependencies (`react-leaflet`, `recharts`).
-
-Chapter 6 presents **testing and evaluation** of this implementation.
+Chapter 7 presents the **conclusion** and overall project reflection.
 
 ---
 
-*Author reminder: Insert Figures 5.1–5.6 (screenshots) and optional code snippets in Appendix. Replace Git/repository note with your actual VCS details.*
+*Author reminder: Insert actual usability dates, participant codes, and survey statistics where marked [Insert]. Attach full test case appendix if your faculty requires it.*

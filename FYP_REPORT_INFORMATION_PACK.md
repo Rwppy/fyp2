@@ -1,601 +1,615 @@
-# CHAPTER 4: SYSTEM DESIGN
+# CHAPTER 5: IMPLEMENTATION
 
-## 4.1 Overview
+## 5.1 Deployment
 
-This chapter describes the **design** of Intelligent Route Cost & Efficiency. It explains how the system is structured, how users interact with it, and how data flows between the client, server, database, and external services.
+### Implementation scope
 
-The design is based on the requirements in Chapter 3. The system uses a **three-tier architecture**:
+This chapter describes how **Intelligent Route Cost & Efficiency** was built. The implementation covers:
 
-1. **Presentation tier** — React web app and Capacitor Android client;
-2. **Application tier** — Node.js and Express REST API;
-3. **Data tier** — SQLite database plus external OSRM and Nominatim services.
+- A **React** single-page application (web and responsive mobile browser);
+- An **Android hybrid app** via Capacitor 7;
+- A **Node.js and Express** REST API;
+- A **SQLite** database for users, trips, and leaderboard data;
+- Integration with **OSRM** (routing) and **Nominatim** (geocoding).
 
-The chapter includes context, use case, activity, class, and sequence diagrams, followed by interface design for the main screens.
+Deployment is intended for a **local or LAN environment**: the backend runs on a PC (`HOST=0.0.0.0`, `PORT=4000`), and clients connect over Wi‑Fi. There is no cloud production deployment in the current codebase.
+
+### Mapping modules to project objectives
+
+**Table 5.1** Module mapping to Chapter 1 objectives
+
+| Objective | Implemented module | Main location |
+|-----------|-------------------|---------------|
+| Multi-route planning | Route API + OSRM integration | `backend/src/services/maps.js`, `routes/routes.js` |
+| Fuel cost and CO₂ calculation | Calculation engine | `backend/src/utils/calc.js` |
+| Lowest-cost recommendation | Route comparison logic | `backend/src/utils/calc.js` |
+| GPS navigation | Navigation overlay + MapLibre map | `NavigationOverlay.jsx`, `NavigationMapView.jsx` |
+| User accounts and engagement | Auth, trips, leaderboard | `auth.js`, `trips.js`, `leaderboard.js` |
+| Cross-platform delivery | Vite + Capacitor | `frontend/`, `frontend/android/` |
+| Admin configuration | Admin API and pages | `routes/admin.js`, `AdminPage.jsx` |
 
 ---
 
-## 4.2 Context Diagram
+## 5.2 Development Environment
 
-The **context diagram** shows the system as one process and its connections to external actors and services.
+### 5.2.1 Programming Languages Used
 
-**Figure 4.1** Context diagram of Intelligent Route Cost & Efficiency
+| Language | Use |
+|----------|-----|
+| **JavaScript (ES modules)** | Frontend and backend application logic |
+| **JSX** | React UI components |
+| **SQL** | SQLite schema and queries (embedded in JavaScript) |
+| **CSS** | Styling via Tailwind CSS and `styles.css` |
+| **JSON** | Configuration (`package.json`, `capacitor.config.json`, API payloads) |
 
-```mermaid
-flowchart LR
-    Guest([Guest User])
-    User([Registered User])
-    Admin([Administrator])
+### 5.2.2 Frameworks and Libraries
 
-    subgraph System["Intelligent Route Cost & Efficiency"]
-        APP[Web / Android Client]
-        API[Express REST API]
-        DB[(SQLite Database)]
-        APP <-->|HTTP JSON| API
-        API <-->|SQL| DB
-    end
+**Backend** (`backend/package.json`)
 
-    OSRM[OSRM Routing Service]
-    NOM[Nominatim Geocoding]
-    GPS[Device GPS]
+| Package | Version (approx.) | Purpose |
+|---------|-------------------|---------|
+| express | 4.19 | HTTP server and routing |
+| better-sqlite3 | 11.10 | SQLite database access |
+| bcryptjs | 3.0 | Password hashing |
+| zod | 3.23 | Request validation |
+| axios | 1.7 | HTTP calls to OSRM/Nominatim |
+| cors | 2.8 | Cross-origin support |
+| dotenv | 16.4 | Environment variables |
 
-    Guest --> APP
-    User --> APP
-    Admin --> APP
+**Frontend** (`frontend/package.json`)
 
-    API --> OSRM
-    API --> NOM
-    APP --> NOM
-    APP --> GPS
+| Package | Purpose |
+|---------|---------|
+| react, react-dom 18.3 | UI framework |
+| vite 5.4 | Build tool and dev server |
+| tailwindcss 3.4 | Utility-first CSS |
+| axios 1.7 | API client |
+| leaflet 1.9 | Planning map |
+| maplibre-gl 5.24 | Navigation map |
+| @capacitor/core, android, geolocation 7.x | Android shell and GPS |
+| polyline 0.2 | Decode route geometry |
+
+*Note: `react-leaflet` and `recharts` are listed in `package.json` but are not used in `frontend/src/`.*
+
+### 5.2.3 IDEs and Tools
+
+| Tool | Use |
+|------|-----|
+| **Visual Studio Code / Cursor** | Code editing |
+| **Node.js** (LTS) | Runtime for backend and npm scripts |
+| **Android Studio** | Build and run Capacitor Android project |
+| **Chrome DevTools** | Web debugging and network inspection |
+| **Vite dev server** | Hot reload during frontend development |
+
+### 5.2.4 Version Control System
+
+The project is structured for use with **Git** (separate `frontend/` and `backend/` folders, npm scripts, documentation). Commits can track changes to source files, configuration, and documentation. If a remote repository (e.g. GitHub) is used, it supports backup and submission evidence for the FYP.
+
+*Author: state your actual repository URL and branch name if applicable.*
+
+### 5.2.5 Operating System Used
+
+Development was carried out on **Microsoft Windows 10/11**. The stack is cross-platform: Node.js and SQLite also run on Linux and macOS. Android builds require Android Studio (Windows, macOS, or Linux).
+
+---
+
+## 5.3 System Configuration and Setup
+
+### 5.3.1 Backend Setup
+
+**Server:** Node.js runs `backend/src/server.js` (Express). No Apache or IIS is used.
+
+**Steps:**
+
+1. Install Node.js LTS.
+2. In `backend/`: run `npm install`.
+3. Copy `backend/.env.example` to `.env`:
+   ```
+   PORT=4000
+   HOST=0.0.0.0
+   CORS_ALLOW_LAN=1
+   ```
+4. Start server: `npm run dev` or `npm start`.
+5. Verify: open `http://localhost:4000/api/health` → `{ "ok": true }`.
+
+**Middleware (Express):**
+
+| Middleware | File | Role |
+|------------|------|------|
+| CORS | `server.js` | Allows web and Capacitor origins; optional LAN IPs |
+| `express.json()` | `server.js` | Parses JSON request bodies |
+| Error handler | `server.js` | Returns JSON errors |
+| `requireAuth` | `middleware/auth.js` | Validates `X-User-Id` header |
+| `requireAdmin` | `middleware/auth.js` | Checks `role === 'admin'` |
+
+**Database:** SQLite file created automatically at `backend/data/app.db` on first run (`database.js`). WAL mode and foreign keys are enabled. No separate MySQL/PostgreSQL server is required.
+
+### 5.3.2 Frontend Setup
+
+**Web development:**
+
+1. In `frontend/`: run `npm install`.
+2. Optional: create `.env` with `VITE_API_BASE_URL=http://localhost:4000`.
+3. Run `npm run dev` → app at `http://localhost:5173`.
+
+**Production build:**
+
+```bash
+npm run build
 ```
 
-**Table 4.1** External entities and interactions
+Output: `frontend/dist/`.
 
-| Entity | Type | Interaction |
-|--------|------|-------------|
-| Guest user | Actor | Plans routes and navigates without saving history |
-| Registered user | Actor | Plans, navigates, saves trips, uses leaderboard |
-| Administrator | Actor | Edits fuel/emission config and user roles |
-| SQLite database | Data store | Stores users, trips, leaderboard entries |
-| OSRM | External service | Returns driving routes, polylines, turn steps |
-| Nominatim | External service | Forward/reverse geocoding for places |
-| Device GPS | Hardware | Provides live position during navigation |
+**Android (Capacitor):**
 
-The client talks to the backend on port **4000** (default). On mobile, the user may set the PC’s LAN address in **Server Settings** before using the app.
+1. Set `VITE_API_BASE_URL` in `.env.production` to PC LAN IP (see `frontend/.env.production.example`).
+2. Run `npm run cap:sync` (build + sync to `frontend/android/`).
+3. Open Android Studio: `npm run cap:open`.
+4. Run on device/emulator.
+
+**UI integration:** **Tailwind CSS** is used for layout and components (`tailwindcss`, `styles.css`). No Bootstrap or Material UI. Custom components include `BottomSheet.jsx`, `AuthModal.jsx`, and form inputs.
+
+### 5.3.3 Build Tools and Package Managers
+
+| Tool | Scope |
+|------|--------|
+| **npm** | Package manager for frontend and backend |
+| **Vite** | Frontend bundling, code splitting (MapLibre/Leaflet chunks in `vite.config.js`) |
+| **Capacitor CLI** | Sync web build to native Android project |
+| **Gradle** (via Android Studio) | Android APK build |
 
 ---
 
-## 4.3 Use Case Diagram
+## 5.4 Database Implementation
 
-**Figure 4.2** Use case diagram
+### 5.4.1 Database Schema Design
 
-```mermaid
-flowchart TB
-    Guest((Guest))
-    User((Registered User))
-    Admin((Administrator))
+SQLite stores three main entities: **users**, **trips**, and **leaderboard_entries**. Schema is created in `initSchema()` in `backend/src/services/database.js`.
 
-    subgraph System["Route Estimator System"]
-        UC1[Register / Login]
-        UC2[Configure Vehicle]
-        UC3[Plan Route]
-        UC4[View Results]
-        UC5[Start Navigation]
-        UC6[Complete Trip]
-        UC7[View Trip History]
-        UC8[View Leaderboard]
-        UC9[Change Password]
-        UC10[Configure Server URL]
-        UC11[Manage Calculation Config]
-        UC12[Manage User Roles]
-    end
+**Relationships:**
 
-    Guest --> UC1
-    Guest --> UC2
-    Guest --> UC3
-    Guest --> UC4
-    Guest --> UC5
-    Guest --> UC10
+- One user → many trips (`trips.user_id` → `users.user_id`);
+- One user → zero or one leaderboard row (`leaderboard_entries.user_id`).
 
-    User --> UC1
-    User --> UC2
-    User --> UC3
-    User --> UC4
-    User --> UC5
-    User --> UC6
-    User --> UC7
-    User --> UC8
-    User --> UC9
-    User --> UC10
+### 5.4.2 SQL Database Tables
 
-    Admin --> UC1
-    Admin --> UC3
-    Admin --> UC11
-    Admin --> UC12
+**Table: `users`**
+
+| Column | Type | Notes |
+|--------|------|-------|
+| user_id | TEXT | Primary key |
+| username | TEXT | Unique, not null |
+| email | TEXT | Optional |
+| password_hash | TEXT | bcrypt hash |
+| role | TEXT | `user` or `admin` |
+| created_at | TEXT | ISO timestamp |
+
+**Table: `trips`**
+
+| Column | Type | Notes |
+|--------|------|-------|
+| trip_id | TEXT | Primary key |
+| user_id | TEXT | Foreign key → users |
+| origin_summary, destination_summary | TEXT | Place labels |
+| distance_km, duration_min | REAL | Trip metrics |
+| fuel_liters, cost_rm, emission_kg | REAL | Actual trip |
+| emissions_saved_kg, money_saved_rm, fuel_saved_liters | REAL | Vs alternative |
+| vehicle_brand, vehicle_model, route_summary | TEXT | Optional |
+| completed_at | TEXT | ISO timestamp |
+
+**Table: `leaderboard_entries`**
+
+| Column | Type | Notes |
+|--------|------|-------|
+| user_id | TEXT | Primary key |
+| user_name | TEXT | Display name |
+| total_emissions_saved, total_money_saved | REAL | Cumulative |
+| trip_count | INTEGER | Number of qualifying trips |
+| joined_at, last_updated | TEXT | Timestamps |
+
+**Index:** `idx_trips_user_completed` on `(user_id, completed_at DESC)`.
+
+### 5.4.3 Stored Procedures or Triggers
+
+**Not applicable.** Logic is implemented in JavaScript services (`trips.js`, `leaderboard.js`, `database.js`) using prepared statements. SQLite triggers and stored procedures were not used.
+
+### 5.4.4 Tools Used for Database Management
+
+| Tool | Use |
+|------|-----|
+| **better-sqlite3** | Programmatic access from Node.js |
+| **DB Browser for SQLite** (optional) | Visual inspection of `backend/data/app.db` |
+| **Backend scripts** | `backend/scripts/clear-trip-leaderboard-data.js` for test data reset |
+
+---
+
+## 5.5 Key Modules and Features Developed
+
+Each subsection describes **functionality**, **technologies**, **logic/pseudocode**, and **integration**.
+
+---
+
+### 5.5.1 User Authentication Module
+
+**Functionality:** Register, login, guest access, password change, role-based admin access.
+
+**Technologies:** **bcryptjs** (not Firebase Auth). Session is client-side: `userId`, `username`, and `role` stored in `localStorage` (`authStorage.js`). Protected API calls send header `X-User-Id`.
+
+**Pseudocode — login:**
+
+```
+FUNCTION login(username, password):
+    user ← findUserByUsername(username)
+    IF user is NULL THEN
+        RETURN error "Invalid username or password"
+    IF NOT bcrypt.compare(password, user.passwordHash) THEN
+        RETURN error "Invalid username or password"
+    IF password hash is legacy SHA-256 THEN
+        upgradeToBcrypt(user, password)
+    RETURN sanitize(user)  // no password in response
 ```
 
-**Table 4.2** Use case summary
+**Pseudocode — protect route:**
 
-| ID | Use case | Primary actor |
-|----|----------|---------------|
-| UC-01 | Register / Login | Guest, User, Admin |
-| UC-02 | Configure Vehicle | Guest, User |
-| UC-03 | Plan Route | Guest, User, Admin |
-| UC-04 | View Results | Guest, User |
-| UC-05 | Start Navigation | Guest, User |
-| UC-06 | Complete Trip | Registered User |
-| UC-07 | View Trip History | Registered User |
-| UC-08 | View Leaderboard | Guest, User |
-| UC-09 | Change Password | Registered User |
-| UC-10 | Configure Server URL | All users |
-| UC-11 | Manage Calculation Config | Administrator |
-| UC-12 | Manage User Roles | Administrator |
+```
+MIDDLEWARE requireAuth(request):
+    userId ← request.header["X-User-Id"]
+    IF userId is empty THEN return 401
+    user ← getUserById(userId)
+    IF user is NULL THEN return 401
+    request.authUser ← user
+    CONTINUE
+```
+
+**Integration:** On success, `AuthModal.jsx` calls `setStoredUser()` and `App.jsx` moves to **car** phase. Trips and password change use `getAuthHeaders()` in `api.js`.
+
+*Screenshot: Figure 5.1 — Login / register screen*
 
 ---
 
-### Use Case Description
+### 5.5.2 Vehicle Setup Module
 
-#### UC-03: Plan Route
+**Functionality:** User selects brand/model (Toyota, Honda, Proton, Perodua) or skips with default **14 km/L**.
 
-| Item | Description |
-|------|-------------|
-| **Use case ID** | UC-03 |
-| **Name** | Plan Route |
-| **Actors** | Guest, Registered User, Administrator |
-| **Description** | The user enters an origin and destination. The system geocodes both points, fetches route alternatives, calculates fuel cost and CO₂, and returns results. |
+**Technologies:** `vehicles.js` data file; `carStorage.js` for `localStorage`.
 
-**Preconditions**
+**Pseudocode:**
 
-- The user has passed the authentication or guest step and completed (or skipped) vehicle setup.
-- The client can reach the backend API (health check succeeds).
-- Network access to OSRM and Nominatim is available.
+```
+FUNCTION completeCarSetup(brand, model):
+    save { brand, model, useDefaultEngine: false } to localStorage
+    set carSetupComplete flag
 
-**Normal flow**
+FUNCTION skipCarSetup():
+    save { useDefaultEngine: true } to localStorage
+    efficiency for API ← 14 km/L
+```
 
-| Step | Actor / system | Description |
-|------|----------------|-------------|
-| 1 | User | Enters origin and destination (or selects from autocomplete / GPS origin). |
-| 2 | User | Clicks **Calculate**. |
-| 3 | System | Sends `POST /api/route` with place names, coordinates, and vehicle efficiency. |
-| 4 | System | Backend geocodes locations via Nominatim if needed. |
-| 5 | System | Backend requests up to three routes from OSRM. |
-| 6 | System | Backend calculates fuel (L), cost (RM), and CO₂ (kg) per route; selects lowest-cost route as recommended. |
-| 7 | System | Returns routes, comparison stats, and map polylines to the client. |
-| 8 | System | Displays results dashboard and planning map. |
+**Integration:** `RouteForm.jsx` sends `efficiencyOverride: { kmPerLiter }` in `POST /api/route`.
 
-**Postconditions**
+*Screenshot: Figure 5.2 — Vehicle setup screen*
 
-- Route result is stored in client state (`result`).
-- Application phase changes to **results**.
-- User can view comparison or start navigation.
+---
 
-**Alternative flows and exceptions**
+### 5.5.3 Route Planning and Calculation Module
 
-| Condition | Handling |
+**Functionality:** Geocode origin/destination, fetch up to three OSRM routes, compute fuel/cost/CO₂, recommend lowest cost.
+
+**Technologies:** `maps.js`, `calc.js`, `routes/routes.js`; Zod validation on request body.
+
+**Pseudocode — cost per route:**
+
+```
+FOR each route r:
+    distanceKm ← r.distanceMeters / 1000
+    kmPerLiter ← efficiencyOverride OR default 14
+    fuelLiters ← distanceKm / kmPerLiter
+    costRM ← fuelLiters × fuelPricePerLiter
+    emissionKg ← fuelLiters × petrol_per_litre_factor
+
+recommended ← route with minimum costRM
+comparator ← Route 2 if exists, else highest cost among others
+stats ← difference(recommended, comparator)
+```
+
+**Pseudocode — OSRM request:**
+
+```
+coords ← origin.lon,origin.lat;destination.lon,destination.lat
+CALL OSRM with alternatives=3, steps=true, exclude=motorway
+IF exclude fails THEN retry without exclude
+RETURN up to 3 routes with polyline and steps
+```
+
+**Integration:** Frontend `requestRouteEstimate()` → `ResultsDashboard.jsx` + `PlanningMapView.jsx`.
+
+*Screenshot: Figure 5.3 — Route results screen*  
+*Code snippet: include `calculateEstimates` loop from `calc.js` in appendix*
+
+---
+
+### 5.5.4 GPS Navigation Module
+
+**Functionality:** Turn-by-turn guidance, route progress, off-route warning (80 m), arrival detection, map follow.
+
+**Technologies:** Capacitor Geolocation / browser GPS; MapLibre GL; `geo.js` (`snapToRoute`); `navigation.js` (turn instructions).
+
+**Pseudocode — snap to route:**
+
+```
+FUNCTION snapToRoute(userLat, userLon, routePoints):
+    FOR each segment on polyline:
+        find closest point and distance to user
+    progressKm ← distance along route to closest point
+    remainingKm ← totalRouteKm - progressKm
+    RETURN progressKm, remainingKm, distanceFromRouteM
+```
+
+**Pseudocode — active turn:**
+
+```
+FUNCTION getActiveGuidance(lat, lon, steps, progressKm):
+    find next step where distanceFromStartKm > progressKm
+    distanceToTurnM ← haversine(user, step location)
+    RETURN instruction title, subtitle, distance
+```
+
+**Integration:** `NavigationOverlay.jsx` updates map via throttled callbacks to `App.jsx`; `NavigationMapView.jsx` renders polyline split (travelled / remaining).
+
+*Screenshot: Figure 5.4 — Navigation screen*
+
+---
+
+### 5.5.5 Trip History and Leaderboard Module
+
+**Functionality:** Save completed trips; aggregate analytics; rank users by cumulative CO₂ saved.
+
+**Technologies:** `trips.js`, `leaderboard.js`; lazy-loaded dashboards.
+
+**Pseudocode — save trip:**
+
+```
+FUNCTION completeNavigation():
+    savings ← recommendedRoute vs compareRoute
+    IF user logged in AND emissionsSaved > 0 THEN
+        POST /api/leaderboard/add
+    IF user logged in THEN
+        POST /api/trips with labels, metrics, savings
+```
+
+**Rank tiers:** Bronze (0–10 kg) through Legend (1000+ kg) in `leaderboard.js`.
+
+**Integration:** Triggered from `App.jsx` after navigation **Complete trip**.
+
+*Screenshot: Figure 5.5 — Trip history dashboard*
+
+---
+
+### 5.5.6 Admin Module
+
+**Functionality:** Edit fuel price and emission factor; assign admin/user roles; full admin page at `/admin`.
+
+**Technologies:** `configState.js` (in-memory config); `requireAdmin` middleware.
+
+**Integration:** `AdminPage.jsx`, `AdminConfigModal.jsx`, `AdminUsersPanel.jsx` call `/api/admin/config` and `/api/users`.
+
+*Screenshot: Figure 5.6 — Admin configuration*
+
+---
+
+## 5.6 APIs and Integration
+
+### 5.6.1 Internal and Third-Party APIs
+
+| API | Type | Purpose |
+|-----|------|---------|
+| **Express REST API** | Internal | Auth, routes, trips, leaderboard, admin |
+| **OSRM** | Third-party | `https://router.project-osrm.org/route/v1/driving/` |
+| **Nominatim** | Third-party | Geocoding (backend and frontend autocomplete) |
+| **OpenStreetMap tiles** | Third-party | Leaflet planning map |
+| **OpenFreeMap** | Third-party | MapLibre navigation style |
+
+### 5.6.2 API Endpoints Implemented
+
+**Table 5.2** Backend endpoints
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/health` | None | Health check |
+| POST | `/api/route` | None | Plan and estimate routes |
+| POST | `/api/auth/register` | None | Register user |
+| POST | `/api/auth/login` | None | Login |
+| POST | `/api/auth/change-password` | User | Change password |
+| GET | `/api/auth/user/:userId` | None | Get user profile |
+| GET | `/api/trips` | User | List trips |
+| GET | `/api/trips/analytics` | User | Trip statistics |
+| POST | `/api/trips` | User | Record trip |
+| GET | `/api/leaderboard` | None | Top users |
+| GET | `/api/leaderboard/user/:userId` | None | User stats |
+| POST | `/api/leaderboard/add` | None* | Add savings |
+| GET | `/api/admin/config` | Admin | Get config |
+| POST | `/api/admin/config` | Admin | Update config |
+| GET | `/api/users` | Admin | List users |
+| PATCH | `/api/users/:userId/role` | Admin | Set role |
+
+*Verifies user exists in body.
+
+### 5.6.3 JSON Payload Structure
+
+**Example — `POST /api/route` request:**
+
+```json
+{
+  "origin": "Ipoh, Perak",
+  "destination": "George Town, Penang",
+  "originLat": 4.5975,
+  "originLon": 101.0901,
+  "destinationLat": 5.4141,
+  "destinationLon": 100.3288,
+  "efficiencyOverride": { "kmPerLiter": 15.5 }
+}
+```
+
+**Example — response (abbreviated):**
+
+```json
+{
+  "origin": { "lat": 4.5975, "lon": 101.0901, "displayName": "..." },
+  "destination": { "lat": 5.4141, "lon": 100.3288, "displayName": "..." },
+  "routes": [
+    {
+      "id": "Route 1",
+      "distanceKm": 98.2,
+      "durationMin": 95,
+      "costRM": 15.84,
+      "emissionKg": 14.65,
+      "fuelUsedLiters": 6.34,
+      "polyline": "encoded..."
+    }
+  ],
+  "recommendation": {
+    "routeId": "Route 1",
+    "by": "lowest_cost",
+    "stats": { "costSavedRm": 1.2, "fasterByMinutes": 0 }
+  }
+}
+```
+
+**Example — authenticated header:**
+
+```
+X-User-Id: user_1710000000_abc123
+Content-Type: application/json
+```
+
+### 5.6.4 Authentication Mechanisms
+
+This project does **not** use JWT or OAuth2. Authentication uses:
+
+1. **bcrypt** password hashing on register/login;
+2. **Client storage** of `userId` after login;
+3. **Header-based identification** (`X-User-Id`) on protected routes;
+4. **Role checks** for admin endpoints (`requireAdmin`).
+
+This is sufficient for a prototype but would need JWT or session tokens for production.
+
+---
+
+## 5.7 Network Configuration
+
+### 5.7.1 Hosting Setup
+
+| Component | Environment |
+|-----------|-------------|
+| Backend | Local PC, listens on all interfaces (`0.0.0.0`) |
+| Web frontend | Vite dev server (`localhost:5173`) or static `dist/` |
+| Android app | Capacitor WebView; API URL points to PC LAN IP |
+
+No cloud server (AWS, Azure, etc.) is configured in the repository.
+
+### 5.7.2 Port Configuration
+
+| Service | Port |
+|---------|------|
+| Backend API | **4000** (default, `PORT` in `.env`) |
+| Vite dev server | **5173** |
+| Android WebView | Uses configured API URL (includes port 4000) |
+
+Windows Firewall must allow inbound TCP on port 4000 for phone testing (`backend/scripts/allow-firewall-port.ps1`).
+
+### 5.7.3 Deployment to Server or Live Environment
+
+**Current deployment steps:**
+
+1. Start backend on PC: `cd backend && npm run dev`.
+2. Web: `cd frontend && npm run dev` or serve `dist/` with any static host.
+3. Android: `npm run cap:sync`, install APK from Android Studio.
+4. On phone: **Server Settings** → enter `http://<PC_IP>:4000` → **Test connection** → **Save**.
+
+Future improvement: deploy backend to a VPS with HTTPS and a public domain.
+
+---
+
+## 5.8 Security Measures
+
+### 5.8.1 Input Validation, Encryption, HTTPS
+
+| Measure | Implementation |
+|---------|----------------|
+| **Input validation** | Zod schemas on all POST/PATCH routes (`routes/*.js`) |
+| **Password encryption** | bcrypt, 12 rounds (`auth.js`) |
+| **HTTPS** | Not enforced in LAN demo; HTTP used between phone and PC |
+| **SQL injection** | Parameterised queries via better-sqlite3 prepared statements |
+
+### 5.8.2 Role-Based Access Control (RBAC)
+
+| Role | Access |
+|------|--------|
+| Guest | Route plan, navigate; no trip save |
+| `user` | Trips, profile, leaderboard write |
+| `admin` | Config, user roles, admin page |
+
+Enforced in `requireAuth` and `requireAdmin` (`middleware/auth.js`). Last admin cannot be demoted (`auth.js`).
+
+### 5.8.3 Error Handling and Logging
+
+| Layer | Handling |
+|-------|----------|
+| Frontend | `ErrorBoundary.jsx` catches render errors; API errors shown in UI |
+| Backend | Global error middleware returns JSON `{ error: message }` |
+| Development logs | Request method/path logged when `NODE_ENV !== 'production'` |
+| Validation errors | HTTP 400 with Zod `details` |
+
+---
+
+## 5.9 Challenges Encountered and Solutions
+
+### 5.9.1 Challenges Encountered
+
+1. **Mobile cannot reach `localhost` backend** — Phone treats localhost as itself, not the development PC.
+2. **CORS blocks LAN requests** — Browser/WebView rejects cross-origin calls from Capacitor to PC IP.
+3. **OSRM `exclude=motorway` rejected** — Some requests return HTTP 400 from public OSRM.
+4. **Navigation crash on start** — Polyline coordinates passed in wrong format to map layer.
+5. **Leaderboard UI crash on mobile** — Rank object rendered as React child instead of tier name.
+6. **Autocomplete clipped on mobile** — Dropdown hidden under top bar in bottom sheet layout.
+7. **GPS causes UI lag** — Every GPS tick re-rendered entire app tree.
+8. **Admin config lost on restart** — Config stored in memory only (`configState.js`).
+
+### 5.9.2 Solutions
+
+| Challenge | Solution |
 |-----------|----------|
-| A1: User uses **Current location** as origin | GPS coordinates sent; reverse geocode applied for display. |
-| A2: User skipped vehicle setup | Default **14 km/L** sent as `efficiencyOverride`. |
-| E1: Location not found | API returns 400; error message shown on form. |
-| E2: OSRM failure | API returns 502/500; user asked to retry. |
-| E3: Backend unreachable | Network error; user prompted to check Server URL (mobile). |
-
-**Related non-functional requirements**
-
-- NFR-07: API input validated with Zod.
-- NFR-08: Map modules loaded lazily after results.
-- NFR-11: CORS allows web and Capacitor clients.
+| Mobile localhost | `ServerSettings.jsx` + `VITE_API_BASE_URL`; user sets PC LAN IP |
+| CORS | `CORS_ALLOW_LAN=1` and private IP check in `server.js` |
+| OSRM exclude | Fallback: retry routing without `exclude` parameter |
+| Navigation crash | Separate helpers for `{lat,lon}` objects vs `[lat,lon]` arrays in `NavigationMapView.jsx` |
+| Leaderboard crash | Display `rank.name` in `Leaderboard.jsx` |
+| Autocomplete | Portal dropdown to `document.body`; z-index fix |
+| GPS lag | Throttle position updates to parent (~200 ms) in `NavigationOverlay.jsx` |
+| Config persistence | Documented as limitation; defaults in `defaults.js`; future: save to SQLite |
 
 ---
 
-#### UC-05: Start Navigation
+## 5.10 Summary
 
-| Item | Description |
-|------|-------------|
-| **Use case ID** | UC-05 |
-| **Name** | Start Navigation |
-| **Actors** | Guest, Registered User |
-| **Description** | The user starts GPS turn-by-turn navigation on the recommended route. |
+This chapter described the **implementation** of Intelligent Route Cost & Efficiency. The system was built with **JavaScript**, **React**, **Express**, and **SQLite**, packaged for web and **Android** via **Capacitor**. Backend and frontend setup, database tables, and seven key modules were explained with pseudocode and API details.
 
-**Preconditions**
+Security uses **bcrypt**, **Zod validation**, and **role-based middleware**. Deployment targets a **LAN** setup on port **4000**, with server URL configuration for mobile clients.
 
-- Route results are available (UC-03 completed).
-- Device location permission can be granted.
+The implementation matches the design in Chapter 4: phase-based UI, OSRM/Nominatim integration, lowest-cost recommendation, GPS navigation, and trip/leaderboard persistence.
 
-**Normal flow**
+**Future improvements:**
 
-| Step | Actor / system | Description |
-|------|----------------|-------------|
-| 1 | User | Clicks **Start navigation** on results screen. |
-| 2 | System | Sets phase to **navigate**; loads MapLibre navigation map. |
-| 3 | System | Requests GPS permission; starts position watch. |
-| 4 | System | Snaps position to route polyline; shows turn instruction and remaining distance. |
-| 5 | System | Updates map puck and camera bearing as user moves. |
-| 6 | User | Follows guidance until arrival or taps **End navigation**. |
+- JWT or session-token authentication;
+- Persist admin config in database;
+- Self-hosted OSRM/Nominatim;
+- HTTPS and cloud deployment;
+- Automated unit and integration tests;
+- iOS Capacitor build;
+- Remove unused npm dependencies (`react-leaflet`, `recharts`).
 
-**Postconditions**
-
-- Navigation state cleared when user ends trip.
-- If user completes trip (UC-06), savings may be saved (registered user only).
-
-**Alternative flows and exceptions**
-
-| Condition | Handling |
-|-----------|----------|
-| A1: User goes **off route** (>80 m) | Warning shown on navigation overlay. |
-| A2: User taps **Recenter** | Map camera follows GPS again. |
-| A3: User arrives (<80 m from destination) | Arrival state shown; user may complete trip. |
-| E1: Location permission denied | Error message; navigation cannot start. |
-
-**Related non-functional requirements**
-
-- NFR-04: Navigation UI optimised for mobile (overlay on full-screen map).
-- NFR-09: GPS updates throttled to reduce UI lag.
+Chapter 6 presents **testing and evaluation** of this implementation.
 
 ---
 
-#### UC-06: Complete Trip (summary)
-
-| Item | Description |
-|------|-------------|
-| **Actors** | Registered User |
-| **Preconditions** | User logged in; navigation active or just finished. |
-| **Normal flow** | User taps **Complete trip** → system computes savings vs alternative route → updates leaderboard → saves trip to SQLite → shows confirmation. |
-| **Exceptions** | Guest user sees message to log in; save skipped. |
-
-*Other use cases (UC-01, UC-07–UC-12) follow the same structure and are mapped to components in Section 4.7.*
-
----
-
-## 4.4 Activity Diagram
-
-**Figure 4.3** Activity diagram — main user journey (plan route to complete trip)
-
-```mermaid
-flowchart TD
-    Start([Start App]) --> Auth{Logged in or guest?}
-    Auth -->|Login/Register| Car[Vehicle Setup]
-    Auth -->|Guest| Car
-    Car --> Search[Enter Origin & Destination]
-    Search --> Calc[Calculate Route]
-    Calc --> OK{Routes returned?}
-    OK -->|No| Err[Show Error]
-    Err --> Search
-    OK -->|Yes| Results[View Results & Map]
-    Results --> NavChoice{Start navigation?}
-    NavChoice -->|No| NewRoute[New Route / Adjust]
-    NewRoute --> Search
-    NavChoice -->|Yes| GPS[Grant GPS Permission]
-    GPS --> Navigate[Turn-by-turn Navigation]
-    Navigate --> Done{Complete or End?}
-    Done -->|End| Results
-    Done -->|Complete| Save{Logged in?}
-    Save -->|Yes| Record[Save Trip & Leaderboard]
-    Save -->|No| Msg[Show guest message]
-    Record --> End([End])
-    Msg --> End
-```
-
-**Figure 4.4** Activity diagram — backend route calculation
-
-```mermaid
-flowchart TD
-    A([Receive POST /api/route]) --> V[Validate request body]
-    V --> G[Geocode origin & destination]
-    G --> R[Call OSRM for alternatives]
-    R --> C[Calculate fuel, cost, CO₂ per route]
-    C --> P[Pick lowest cost route]
-    P --> D[Build comparison stats]
-    D --> J([Return JSON response])
-```
-
----
-
-## 4.5 Class Diagram
-
-The system is implemented in JavaScript (not classical OOP). **Figure 4.5** shows a **logical class diagram** of main entities, client modules, and server services and their relationships.
-
-**Figure 4.5** Logical class / component diagram
-
-```mermaid
-classDiagram
-    class User {
-        +String userId
-        +String username
-        +String role
-        +String passwordHash
-    }
-    class Trip {
-        +String tripId
-        +String userId
-        +String originSummary
-        +String destinationSummary
-        +Float distanceKm
-        +Float costRm
-        +Float emissionKg
-        +Float moneySavedRm
-    }
-    class LeaderboardEntry {
-        +String userId
-        +Float totalEmissionsSaved
-        +Float totalMoneySaved
-        +Int tripCount
-    }
-    class RouteResult {
-        +String id
-        +Float distanceKm
-        +Float durationMin
-        +Float costRM
-        +Float emissionKg
-        +String polyline
-    }
-
-    class App {
-        +phase
-        +result
-        +handleSubmit()
-        +startNavigation()
-        +completeNavigation()
-    }
-    class RouteForm
-    class ResultsDashboard
-    class NavigationOverlay
-    class MapPreview
-
-    class AuthService {
-        +registerUser()
-        +loginUser()
-        +changePassword()
-    }
-    class MapsService {
-        +getRouteAlternatives()
-        +geocode()
-    }
-    class CalcEngine {
-        +calculateEstimates()
-        +pickFuelEfficientRoute()
-    }
-    class TripService {
-        +recordTrip()
-        +getAnalytics()
-    }
-
-    User "1" --> "*" Trip : completes
-    User "1" --> "0..1" LeaderboardEntry : has
-    App --> RouteForm
-    App --> ResultsDashboard
-    App --> NavigationOverlay
-    App --> MapPreview
-    App ..> AuthService : HTTP
-    RouteForm ..> MapsService : via API
-    MapsService ..> CalcEngine : routes
-    TripService --> Trip : persists
-```
-
-**Figure 4.6** Entity-relationship diagram (database)
-
-```mermaid
-erDiagram
-    USERS ||--o{ TRIPS : records
-    USERS ||--o| LEADERBOARD_ENTRIES : ranks
-
-    USERS {
-        text user_id PK
-        text username UK
-        text password_hash
-        text role
-        text created_at
-    }
-    TRIPS {
-        text trip_id PK
-        text user_id FK
-        text origin_summary
-        text destination_summary
-        real distance_km
-        real cost_rm
-        real emission_kg
-        real money_saved_rm
-        text completed_at
-    }
-    LEADERBOARD_ENTRIES {
-        text user_id PK
-        real total_emissions_saved
-        real total_money_saved
-        int trip_count
-    }
-```
-
----
-
-## 4.6 Sequence Diagram
-
-**Figure 4.7** Sequence diagram — plan route (`POST /api/route`)
-
-```mermaid
-sequenceDiagram
-    actor User
-    participant RF as RouteForm
-    participant API as Express API
-    participant MAP as maps.js
-    participant NOM as Nominatim
-    participant OSRM as OSRM
-    participant CAL as calc.js
-
-    User->>RF: Enter origin, destination, Calculate
-    RF->>API: POST /api/route (JSON)
-    API->>MAP: getRouteAlternatives()
-    MAP->>NOM: Geocode origin
-    NOM-->>MAP: Coordinates
-    MAP->>NOM: Geocode destination
-    NOM-->>MAP: Coordinates
-    MAP->>OSRM: Request alternatives (max 3)
-    OSRM-->>MAP: Routes, polylines, steps
-    MAP->>CAL: calculateEstimates(routes)
-    CAL-->>MAP: Enriched routes + recommendation
-    MAP-->>API: Result object
-    API-->>RF: JSON response
-    RF-->>User: Show ResultsDashboard + map
-```
-
-**Figure 4.8** Sequence diagram — complete trip (registered user)
-
-```mermaid
-sequenceDiagram
-    actor User
-    participant NO as NavigationOverlay
-    participant App
-    participant API as Express API
-    participant DB as SQLite
-
-    User->>NO: Tap Complete trip
-    NO->>App: onComplete()
-    App->>App: computeTripSavings()
-    App->>API: POST /api/leaderboard/add
-    API->>DB: Update leaderboard_entries
-    App->>API: POST /api/trips (X-User-Id)
-    API->>DB: INSERT trip
-    API-->>App: Success
-    App-->>User: Confirmation message
-```
-
----
-
-## 4.7 Interface Design
-
-The user interface is a **single-page application** controlled by a `phase` state: `auth` → `car` → `search` → `results` → `navigate`. On screens **≥768 px** wide, the form appears in a **left sidebar**; on mobile and Android, it uses a **bottom sheet** over a full-screen map.
-
-**Table 4.3** Application phases and main components
-
-| Phase | Purpose | Main component |
-|-------|---------|----------------|
-| auth | Login, register, or guest | `AuthModal.jsx` |
-| car | Select vehicle or skip (14 km/L) | `CarSetupPanel.jsx` / `CarSetupModal.jsx` |
-| search | Enter origin and destination | `RouteForm.jsx` |
-| results | Compare routes, start navigation | `ResultsDashboard.jsx` |
-| navigate | GPS guidance | `NavigationOverlay.jsx` + `NavigationMapView.jsx` |
-
-Modals (lazy-loaded): `Leaderboard.jsx`, `TripHistoryDashboard.jsx`, `ProfileSettings.jsx`, `ServerSettings.jsx`, `AdminConfigModal.jsx`. Admin full page: `/admin` → `AdminPage.jsx`.
-
----
-
-### 4.7.1 Authentication Screen
-
-- **Layout:** Centred modal on dimmed background; mobile uses rounded bottom sheet style.
-- **Elements:** Username, password, optional email (register), toggle Login/Register, **Continue as guest**.
-- **Flow:** Success → vehicle setup phase; guest → vehicle setup without `userId`.
-
-*Screenshot placeholder: Figure 4.9 — Authentication screen*
-
----
-
-### 4.7.2 Vehicle Setup Screen
-
-- **Layout:** Bottom sheet (mobile) or modal (desktop sidebar flow).
-- **Elements:** Brand carousel (Toyota, Honda, Proton, Perodua), model carousel, **Continue**, **Skip/Close** (uses default 14 km/L).
-- **Feedback:** Selected brand/model shown in top bar during later phases.
-
-*Screenshot placeholder: Figure 4.10 — Vehicle setup screen*
-
----
-
-### 4.7.3 Route Search and Results
-
-**Route search (`RouteForm.jsx`)**
-
-- Origin field with autocomplete (Nominatim, Malaysia-biased).
-- **Current location** button for GPS origin.
-- Destination field with autocomplete.
-- **Calculate** and **Clear** buttons.
-
-**Results (`ResultsDashboard.jsx`)**
-
-- Recommended route card (green) with distance, duration, RM cost, CO₂, fuel (L).
-- Alternative route card (amber) when two distinct paths exist.
-- Combined savings card (money, fuel, CO₂ vs alternative).
-- **Start navigation** button.
-- Planning map (`PlanningMapView.jsx`) shows polylines behind the sheet.
-
-*Screenshot placeholder: Figure 4.11 — Route search screen*  
-*Screenshot placeholder: Figure 4.12 — Results and comparison screen*
-
----
-
-### 4.7.4 Navigation Screen
-
-- **Layout:** Full-screen MapLibre map; navigation overlay at top and bottom.
-- **Elements:** Turn instruction banner, distance to turn, ETA, off-route warning, **Recenter**, **End navigation**, **Complete trip**.
-- **Map:** Green remaining route, grey travelled segment, user puck with bearing.
-- **Thresholds:** Off-route and arrival at **80 m**.
-
-*Screenshot placeholder: Figure 4.13 — GPS navigation screen*
-
----
-
-### 4.7.5 Trip History and Leaderboard
-
-**Trip History (`TripHistoryDashboard.jsx`)**
-
-- Hero cards: total money saved, fuel saved, CO₂ saved.
-- Stat grid: trip count, distance, average emissions.
-- Scrollable trip list with resolved place names.
-
-**Leaderboard (`Leaderboard.jsx`)**
-
-- Ranked list with tier badge (Bronze–Legend).
-- Personal stats for logged-in user.
-
-*Screenshot placeholder: Figure 4.14 — Trip history dashboard*  
-*Screenshot placeholder: Figure 4.15 — Leaderboard screen*
-
----
-
-### 4.7.6 Profile, Server Settings, and Admin
-
-| Screen | Access | Main actions |
-|--------|--------|--------------|
-| **Profile** | Logged-in user (burger menu) | Change password |
-| **Server Settings** | All users (admin menu link) | Set API URL, test connection |
-| **Admin config** | Admin only | Edit fuel price, CO₂ factor, feature flags |
-| **Admin users** | Admin only | Promote/demote user roles |
-| **Admin page** | `/admin` route | Full-page config and user tabs |
-
-*Screenshot placeholder: Figure 4.16 — Server settings*  
-*Screenshot placeholder: Figure 4.17 — Admin configuration*
-
----
-
-### 4.7.7 Navigation Flow Summary
-
-**Figure 4.18** UI navigation flow
-
-```mermaid
-flowchart LR
-    A[Auth] --> B[Car Setup]
-    B --> C[Search]
-    C --> D[Results]
-    D --> E[Navigate]
-    E --> D
-    D --> C
-
-    C -.-> H[Trip History]
-    C -.-> L[Leaderboard]
-    C -.-> P[Profile]
-    C -.-> S[Server Settings]
-    C -.-> AD[Admin Config]
-```
-
-Solid arrows: main phase flow. Dashed arrows: modal overlays from top menu.
-
----
-
-## 4.8 Summary
-
-This chapter presented the system design of Intelligent Route Cost & Efficiency. The **context diagram** showed the client, API, SQLite database, and external OSRM/Nominatim services. The **use case diagram** defined twelve main functions for guest, registered, and admin users, with detailed descriptions for **Plan Route** and **Start Navigation**.
-
-**Activity diagrams** described the user journey from login to trip completion and the backend route-calculation process. The **class diagram** and **ERD** modelled users, trips, leaderboard data, and major software modules. **Sequence diagrams** illustrated route planning and trip saving.
-
-**Interface design** followed a phase-based flow with responsive layout (sidebar vs bottom sheet). Main screens cover authentication, vehicle setup, search, results, navigation, history, leaderboard, and admin tools.
-
-Chapter 5 explains how these designs were **implemented** in code. Chapter 6 describes **testing** of the designed features.
-
----
-
-*Author reminder: Export mermaid diagrams as PNG/SVG for the report (Figure 4.1–4.18). Insert actual screenshots in Section 4.7.*
+*Author reminder: Insert Figures 5.1–5.6 (screenshots) and optional code snippets in Appendix. Replace Git/repository note with your actual VCS details.*
